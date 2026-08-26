@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# Initialize git repo and push to GitHub remote
+# Initialize git repo, create GitHub repo, and push
 # Usage: ./github-init.sh
 
 FOLDER_NAME=$(basename "$PWD")
+
+gh repo create "thegoblingame/${FOLDER_NAME}" --public --confirm
 
 git init
 git add .
