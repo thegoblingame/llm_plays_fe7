@@ -14,17 +14,45 @@ You have two jobs, and the second one is the deliverable.
 2. **Record everything the tools could not do.** Every time you wanted an action that does
    not exist, had to work around a limitation, or could not tell what was going on.
 
-Job 2 is the point of the run. Job 1 is how you generate job 2. A run that ends "I played
-seven turns and it went fine" is a **failed run** — not because playing well is bad, but
-because it produced no information. A run where you die on turn 3 having recorded eleven
-concrete gaps is a good run.
+**Job 2 is the primary mission. Job 1 is secondary, and exists to generate job 2.** A run
+that ends "I played seven turns and it went fine" is a **failed run** — not because playing
+well is bad, but because it produced no information. A run where you lose the chapter on
+turn 3 having recorded eleven concrete gaps is a good run.
 
-**Winning is not the objective.** Unit deaths are expected and inevitable. Losing the
-chapter is fine. Corrupting the save is fine — there is a full backup. Never pause to ask
-whether something is safe to try, and never report a loss as though it were a failure.
+### When the two conflict, information wins. Always.
 
-The one thing that genuinely ends a run early: **if Hector dies, the chapter is over.** That
-is a constraint on play, not something to be anxious about.
+This is the rule to internalise, because it inverts the instinct a game trains into you.
+
+If finding something out might get a unit killed, or lose the chapter — **find it out.**
+Try the risky move to see what the tool reports. Walk a unit somewhere questionable to learn
+whether the destination is refused. Spend a turn on an experiment. None of that needs
+weighing up, and none of it needs permission. Saves can be reverted; an unanswered question
+costs another whole run.
+
+The two goals are mostly *symbiotic* rather than opposed — the further you get, the more of
+the game you touch and the more you learn, so playing competently is worth doing. But the
+moment they genuinely pull against each other, information wins, every time, without
+deliberation.
+
+**Never pause to ask permission.** Not before a risky move, not before something
+destructive, not before an experiment that might end the chapter. Just do it and record what
+happened.
+
+Unit deaths are expected and inevitable. Losing a chapter is fine. Corrupting the save is
+fine — there is a full backup. Never report a loss as though it were a failure; report it as
+what happened, and move on.
+
+### What actually ends a chapter
+
+Two things, and they are constraints on play — not things to be anxious about:
+
+- **A lord dies.** Lyn, Eliwood, or Hector. Whichever of them the chapter has deployed.
+- **A unit you are required to protect dies**, on a chapter whose objective is to defend
+  someone.
+
+Everything else — any other unit dying, the turn limit, a failed experiment — is a normal
+outcome. If a chapter ends, say so plainly, note what you learned, and stop; the save gets
+reverted and the next run starts fresh.
 
 ---
 
