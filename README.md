@@ -5,6 +5,7 @@ in the mGBA emulator — reading the game state out of RAM, deciding what to do,
 the controller.
 
 **If you are a fresh session, read this file, then `BACKLOG.md`, then `RAM.md`.**
+**If you are about to play the game, read `RUNBOOK.md`.**
 
 ---
 
@@ -33,7 +34,7 @@ One more piece lives outside both — the `memory-investigator` subagent definit
 | `BACKLOG.md` | **Start here after this file.** The ranked list of what we cannot do yet, split into memory work and tool work. |
 | `RAM.md` | The canonical memory map — addresses, struct layouts, formulas, and the method notes. ~1600 lines. Every claim is tagged Confirmed / Inferred / Unverified. |
 | `attempts/` | Working logs, one per investigation. Historical; the conclusions have been folded into `RAM.md`. |
-| `attempts/HANDOFF.md` | **Superseded.** Written 2026-08-11, kept for history. Parts of it are now known to be wrong. Use this README and `BACKLOG.md` instead. |
+| `RUNBOOK.md` | The playbook for an actual playthrough — objective, the turn loop, and the recording discipline. Read it before starting a run. |
 | `runs/` | JSONL logs from playthroughs — see the feedback loop below. |
 | `misc/` | Grant's scratch space. **Do not read it**; it is deliberately excluded (see `CLAUDE.md`). |
 
