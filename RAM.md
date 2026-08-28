@@ -39,8 +39,8 @@ Every entry is tagged with how much it can be trusted:
 | **Combat forecast — `gBattleTarget`** | `0x0203A470` | Confirmed |
 | **Item / weapon data table (ROM)** | `0x08BE222C` | Confirmed |
 | **Staff target-select proc** | **dynamic** — find by ROM script pointer `0x08B96998`; target at `+0x2C` | Confirmed |
-| **Movement range grid** — row data | `0x030004AC` (IWRAM) | Confirmed |
-| Movement range grid — row pointer base for `y=0` | `0x03000448` (IWRAM) | Confirmed |
+| **Movement range grid** — row-pointer table | `0x03000440` (IWRAM) | Confirmed |
+| Movement range grid — row data start / stride / row count | **PER CHAPTER — derive, never hardcode** | Confirmed |
 | Second map layer, purpose unknown | `0x020302D8` → `0x02030344` | Unverified |
 
 Unit structs are **72 bytes (`0x48`)** and packed contiguously.
@@ -205,7 +205,30 @@ want the current cursor; treat the play-state copy as a stale snapshot.
 
 The cursor stops at **x = 14** in the opening Lyn-mode chapter — two Right presses from
 x=13 land on 14, not 15. Worth knowing before treating a non-moving cursor as a dropped
-input. Map height not yet probed.
+input. Map height falls out of the movement grid's row-pointer table — see Movement range.
+
+### The live cursor is a MENU-FOCUS detector — Confirmed
+
+`0x0202BBCC` **does not move while a menu has focus.** A direction press is consumed by the
+menu, so the map cursor holds still; with no menu, the same press walks the cursor. That makes
+one read before and after a direction press a cheap, non-destructive test for "is a menu
+open?", with no snapshot/diff and no risk of committing anything.
+
+Verified on Lyn Ch.7 HM: with a unit's action menu up, `Up` navigated the menu and the cursor
+stayed on the unit's tile; on a bare map the same press moved it one tile.
+
+`src/fe7.ts` `commitWait()` relies on this. Its `Up` is *menu* navigation (the action menu
+wraps, so one `Up` from the top reaches Wait, the last entry) — but fired at a bare map it
+walks the cursor, and the `A` behind it then lands on the board, where empty ground opens the
+**field menu whose last entry is End Turn**. That is a silent phase-ender with units unmoved.
+So the press is verified rather than blind: press `Up`, re-read the cursor, and only send `A`
+if the cursor held.
+
+> **Caveat — the map edge gives a false "menu open".** At `y = 0`, `Up` is blocked by the
+> boundary and the cursor holds still with no menu present, exactly as if one were open. The
+> same applies to any direction pressed into an edge. Treat a non-moving cursor as
+> *inconclusive* there, not as proof of focus — this is the same trap the "Map bounds" note
+> above describes, in a different disguise.
 
 ---
 
@@ -473,7 +496,7 @@ one-byte ID (`0x4D`, `0x4E`, `0x4F`, … at stride `0x50`).
 
 ---
 
-## Movement range — FOUND, `0x030004AC` in IWRAM — Confirmed
+## Movement range — FOUND, table at `0x03000440` in IWRAM — Confirmed
 
 The game's own reachable-tile set, already accounting for terrain cost, class, and blocking
 units. One read answers "can this unit reach that tile" for **every tile at once**, before
@@ -481,33 +504,53 @@ pressing anything.
 
 ### Layout
 
-A row-pointer table immediately followed by its own row data:
+A table of 4-byte row pointers at `0x03000440`, immediately followed by the row data it
+points at. **Only the table address is fixed.** The row count and the row stride are sized to
+the map and are allocated fresh at map load, so they differ per chapter:
 
-| What | Address |
-|---|---|
-| Row pointer table (physical start) | `0x03000440` |
-| **Row pointer base for `y = 0`** | **`0x03000448`** |
-| Row data start | `0x030004AC` |
-| Row data end (exclusive) | `0x03000734` |
+| Chapter | Rows | Stride | Data start | Data end (excl.) | Table terminator |
+|---|---|---|---|---|---|
+| Lyn Ch.1 HM "A Girl from the Plains" | 14 | `0x11` (17) | `0x03000478` | `0x03000566` | `0xFFFFFFFF` |
+| Lyn Ch.7 HM "Siblings Abroad" | 18 | `0x16` (22) | `0x03000488` | `0x03000614` | `0x00000000` |
+| Ch.22 Hector HM | 27 | `0x18` (24) | `0x030004AC` | `0x03000734` | not recorded |
 
-27 pointers × 4 bytes, each row **24 bytes** (`0x18`) — so 648 bytes of grid. The table ends
-exactly where its data begins, which is what makes the structure recognisable.
+> ⚠️ **Do not hardcode any row of that table.** `src/fe7.ts` originally hardcoded the Ch.22
+> numbers (`0x030004AC`, stride 24, 27 rows) as universal constants. On Lyn Ch.1 that misread
+> refused legal moves and made the chapter unwinnable; on Lyn Ch.7 the over-read landed in
+> zeroed memory, where `0x00` decodes as *cost 0 = legal destination*, and the tool reported
+> **319 tiles / 315 legal destinations against a true 39**. The two failure modes are opposite,
+> so testing on one map tells you nothing about the next. Fixed 2026-08-28.
+
+### Deriving the geometry — do this on every read
+
+The table ends exactly where its own data begins. That single invariant gives you everything,
+and it holds on all three maps above:
+
+```
+row_count = (read32(0x03000440) - 0x03000440) / 4     # 14, 18, 27
+stride    =  read32(0x03000444) - read32(0x03000440)  # 17, 22, 24
+row_base(y) = read32(0x03000440 + 4 * (y + 2))
+addr(x, y)  = row_base(y) + x
+```
+
+**Never scan for a terminator.** Ch.1 ends the table with `0xFFFFFFFF` and Ch.7 ends it with
+`0x00000000`, so no single sentinel works — derive the count from the first pointer instead.
+
+Read exactly `row_count * stride` bytes and not one more. The data begins immediately after
+the table, so **one `read_range` starting at `0x03000440` fetches the table and the whole grid
+together** (756 bytes even on Ch.22, well under the 4096 cap) — the correct implementation
+costs exactly the same one round trip the broken hardcoded one did.
+
+`stride` is **2 wider than the playable map width** — Inferred, but consistent on both maps
+where it can be checked: Ch.1 stride 17 against a cursor that stops at `x = 14` (width 15),
+Ch.7 stride 22 against an enemy standing at `x = 18` (width 20, so ≥ 19 required). The two
+trailing columns read `0xFF`. **Map dimensions therefore fall out of this table for free**:
+width = `stride - 2`, addressable height = `row_count - 2`.
 
 ### Indexing — `col = x`, `row = y + 2`
 
-```
-addr(x, y) = 0x030004AC + 24 * (y + 2) + x
-```
-
-Or, preferred, dereference the table instead of hardcoding the data base:
-
-```
-row_ptr = read32(0x03000448 + 4 * y)
-addr    = row_ptr + x
-```
-
-The `+2` is **Confirmed** empirically. Reading it as two top border rows (`y = -2`, `y = -1` at
-`0x03000440` / `0x03000444`) is **Inferred** — it explains the offset and matches the usual
+The `+2` is **Confirmed** empirically, on all three maps above. Reading it as two top border
+rows (`y = -2`, `y = -1`) is **Inferred** — it explains the offset and matches the usual
 FE-GBA bordered-map allocation, but note the border is asymmetric: there is **no** left column
 border, `col = x` exactly. Don't assume a symmetric border.
 
@@ -541,7 +584,7 @@ Terrain cost is also visible in the grid, so don't assume Manhattan. Legault's r
 route down column 10 was blocked, forcing the path through column 11. **Read the value; never
 recompute it as distance.**
 
-### Confirmed on two units with different x *and* y
+### Confirmed on two units with different x *and* y — all on Ch.22 Hector HM
 
 | Unit | Position | Origin (`0x00`) found at | Max value |
 |---|---|---|---|
@@ -560,6 +603,13 @@ y=4           10,11      =  4  3
 y=5              11      =  4
 y=6              11      =  5
 ```
+
+> **Provenance:** every observation in this subsection is **Ch.22 Hector HM only**. It is
+> rigorous along the axes it varied — two units, different x and y, ~30 cells, an independent
+> cross-check — and it is precisely because it never varied the *map* that the Ch.22 stride was
+> mistaken for a universal constant. The connectivity of these grids is what proves stride 24
+> was genuinely right *there*: a wrong stride shears rows into diagonal streaks and throws the
+> `0x00` origin off the map, which is exactly how the Ch.1 misread announced itself.
 
 **Independent cross-validation.** This grid marks `(12,3)` unreachable while `(11,3)` costs 2 —
 and an earlier session had probed those exact two tiles through the decoded text buffer and read
@@ -1555,10 +1605,15 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 - Chapter / map ID
 - **Terrain / map tile array** — still unlocated, but no longer blocks pathing: the movement
   range grid answers "is this a legal destination, and what does it cost" directly. Best lever
-  now is to look for another row-pointer table shaped like the two already found (27 × `0x18`,
-  table ending at its own data), not to search for terrain IDs
-- **True map dimensions** — the grid buffer is 24 wide × 27 rows *including* a 2-row top border,
-  so the real map is smaller; exact width/height not yet derived
+  now is to look for another row-pointer table with the same *shape* as the movement grid's —
+  4-byte row pointers, one per row, the table ending exactly where its own data begins — rather
+  than searching for terrain IDs. Match the **shape only, never a row count or stride**: both
+  are sized to the map and differ per chapter (see Movement range)
+- ~~**True map dimensions**~~ — **RESOLVED 2026-08-28: they fall out of the movement grid's
+  row-pointer table.** width = `stride - 2`, addressable height = `row_count - 2`, both derived
+  per map by the recipe in the Movement range section. Ch.1 = 15×12, Ch.7 = 20×16,
+  Ch.22 = 22×25. The `- 2` on width is Inferred (the trailing columns read `0xFF`); the row
+  count is Confirmed
 - ~~**Derived combat stats** (Atk / Crit / Hit / Avoid)~~ — **RESOLVED: the `BattleUnit`
   pair at `0x0203A3F0` / `0x0203A470`.** See the Combat forecast section. Three follow-ups
   remain open:
