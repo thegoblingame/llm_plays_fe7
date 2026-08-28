@@ -1,3 +1,8 @@
+> **SUPERSEDED — kept for history.** Written 2026-08-11. Several claims here are now known
+> to be wrong or stale: the combat forecast has since been found, staff and item actions
+> exist, and the chapter objective is known ("Defend Nils", 11-turn limit). Read the repo
+> `README.md` and `BACKLOG.md` instead.
+
 # Handoff — FE7
 
 **Written:** 2026-08-11 (supersedes the 2026-08-10 handoff)
