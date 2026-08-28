@@ -16,28 +16,109 @@ Each item is tagged with its lane:
 
 ### 1. Combat forecast / derived stats — [both]
 
-**Status:** unlocated. The last big RAM unknown.
+**Status: LOCATED (2026-08-26). The memory half is done; the tool half is not built.**
+Full write-up in `RAM.md` → "Combat forecast".
 
-Atk / Crit / Hit / Avoid are computed and displayed by the game, so they exist in RAM.
-Finding them solves *two* problems at once:
+FE7 keeps two 128-byte `BattleUnit` structs and the forecast panel is just a rendering of
+them. Both are static globals:
 
-- Lets us evaluate a trade before committing to it, instead of swinging blind.
-- Fixes **target readback**. `fe7_act(action:"attack")` currently presses Right blindly to
-  cycle targets and cannot tell which enemy is selected. On turn 4 this cost a kill:
-  Bartre at 4 HP stood between a 4-HP enemy and a full-health one, and a wrong pick would
-  have killed him, so the turn was wasted retreating.
+| Struct | Address |
+|---|---|
+| `gBattleActor` | `0x0203A3F0` |
+| `gBattleTarget` | `0x0203A470` |
 
-**Lever:** the text buffer at `0x0202A5B4` already shows the weapon name and then the
-target's class during an attack, so the forecast is being assembled nearby. Snapshot before
-opening the attack menu, diff once the forecast is on screen.
+Stat fields are u16 at `+0x5A` ATK, `+0x5C` DEF, `+0x5E` AS, `+0x60` HIT, `+0x62` AVO,
+`+0x64` **effective HIT** (the on-screen number), `+0x66` CRIT, `+0x68` DODGE, `+0x6A`
+**effective CRIT** (the on-screen number). Displayed damage is `my ATK − opponent DEF`.
+All formulas are confirmed and written up, including terrain, weapon triangle (reavers
+included) and support bonuses.
 
-### 2. Item / staff / trade actions — [tool]
+**Target readback is solved too.** `gBattleTarget` embeds a copy of the target's unit
+struct, so `+0x0B` is the roster index and `+0x10`/`+0x11` the tile. That is the readback
+`fe7_act(action:"attack")` has been missing.
 
-**Status:** not implemented. `fe7_act` supports `wait` and `attack` only.
+**What is left — [tool]:**
 
-Highest-value pure-tool addition. This is why the healer could never heal and why
-vulneraries go unused — Bartre sat at 4/40 and *unhealable* not because of game state but
-because the tool layer has no verb for it.
+- Build `fe7_forecast` — read the pair, decode, and report both sides. Gate the read on
+  `read32(0x0203A474) != 0`, which is false whenever the pair is stale.
+- Wire the readback into `fe7_act(action:"attack")` so target cycling stops being blind.
+
+**Two traps for whoever builds it:**
+
+1. **`+0x13` (projected HP) is not an outcome oracle.** It is a deterministic
+   "every blow lands, no crits" projection. Proven: forcing the attacker's effective hit to
+   0 still showed the target at 0 HP, and both committed test attacks diverged from it.
+   Report it as *best case* / "can this kill at all", never as "this will happen".
+   `uses(+0x4A) − uses(+0x48)` **is** reliable — it is the number of attacks that side
+   makes, i.e. the doubling indicator.
+2. **Do not recompute the stats from base stats.** Support bonuses are folded in and are
+   invisible from the unit struct — Hector read +1 Def / +5 Avo / +2 Crit / +5 Ddg over his
+   base formulas purely from nearby allies. Read the fields.
+
+**Still open — [mem]:** the defender's effective crit carries an unexplained constant `−4`
+(the attacker's does not); whether that is a *defender* rule or an *enemy* rule needs a
+forecast captured during the enemy phase. And `gBattleTarget` updating on Left/Right target
+cycling is expected but **undemonstrated**.
+
+### 2. Item / staff / trade actions — [both]
+
+**Status: MAPPED (2026-08-27). The memory half is done; the tool half is not built.**
+Full write-up in `RAM.md` → "Unit actions — staff, item, trade"; working log in
+`attempts/8.27.2026_staff_item_trade.md`.
+
+All three flows were driven end to end against the live game, every step confirmed by effect.
+Bartre was healed 4 → 27 for real, which was the concrete thing this item existed to unblock.
+
+**Action menu order — Confirmed:** `Attack, Staff, Rescue, Item, Trade, …, Wait` with `Wait`
+always last. Entry counts observed: 3 (Lyn, `Item/Trade/Wait`), 4 (Lucius, `Staff/Item/Trade/
+Wait`), 5 (Hector, `Attack/Rescue/Item/Trade/Wait`). Derive the index from the count plus the
+order — do not hardcode — then verify by effect before committing.
+
+**What each entry does, checkable from memory after pressing `A`:**
+
+| Entry | Signature |
+|---|---|
+| `Attack` | new menu, count = equippable weapons |
+| `Staff` | new menu, count = type-4 items; ASCII = that staff's use-description |
+| `Item` | new menu, count = item count; **index == inventory slot** |
+| `Rescue` | no menu; ASCII contains `"unit to rescue."` |
+| `Trade` | no menu; ASCII contains `"unit to trade with."` |
+
+**Target readback is solved for staves and generalises to attack.** `gBattleTarget` is *stale*
+during staff target select (`read32(0x0203A474) == 0`, the documented gate). Instead:
+`search_memory(bytes=[0x98,0x69,0xB9,0x08], region="EWRAM", align=4)` returns exactly 1 match
+while in staff target select and 0 otherwise, and `read32(match + 0x2C)` is the highlighted
+target's unit-struct pointer. The general form — snapshot `0x02024000`+8192, press `Right`,
+diff `width=4`, take the slot whose value is a unit-struct address — worked for staff target,
+trade partner **and** rescue target, so it is the readback `fe7_act("attack")` needs too.
+
+**What is left — [tool]:**
+
+- `fe7_act(action:"staff")` — target by slot or tile, cycle with `Right` until the target
+  pointer matches, then commit. Heal restores `10 + Str/Mag`; the staff list is the type-4
+  subset of the inventory, so read `+0x07` from the ROM item table to build it.
+- `fe7_act(action:"item")` — self-targeted, no target step; item list index == inventory slot;
+  item sub-menu index 0 is `Use`.
+- `fe7_act(action:"trade")` — column byte 0/1, row byte, `A` auto-jumps between columns; verify
+  by reading both units' 10-byte inventory blocks at `+0x1E`. Trade does **not** spend the
+  action, so the tool should return with the action menu still open.
+
+**Four traps for whoever builds it:**
+
+1. **A level-up blocks the spent flag.** `+0x0C` bit 1 stays clear and the item uses stay
+   unchanged until the level-up screen is dismissed. Poll and press `A` until bit 1 sets.
+2. **`0x0202A5B4` does not track the action-menu highlight** — it reads `"Wait"` at every
+   index. It *does* track item/staff-list highlights and holds the prompts and refusal
+   messages. See the corrected table in RAM.md.
+3. **Menu sub-structures are stale-prone.** A plausible-looking sub-menu sat at `0x020252C0`
+   while the live one was at `0x020256F8`; the trade proc's `+0x28` held the *initial* partner
+   across three `Right` presses. Locate by diff every time.
+4. **Diff twice.** The first diff after `press_sequence` returns routinely catches a
+   mid-transition frame with 30-70 sprite-churn changes and no index pair.
+
+**Still open — [mem]:** the identity of the 5th entry in Lucius's (10,2) menu (count went 4 → 5
+when a green NPC became adjacent); whether green units can be *traded* with (they can be
+staff-targeted, Confirmed); the trade-screen cursor struct's remaining fields.
 
 ### 3. Input-state probe as a tool — [tool]
 
@@ -97,7 +178,9 @@ debug when it happens.
 - **The menu allocator** — which slot a given menu lands in, and why it varies between runs
 - **Purpose of the second `"Mark"` copy at `0x02020160`**
 - **Exact sync trigger for the play-state cursor copy at `0x0202BC0A`**
-- **Objective text** — not exposed as ASCII; the chapter objective has never been read
+- ~~**Objective text**~~ — **ANSWERED 2026-08-27** via `fe7_unstick`'s screenshot: this chapter
+  is **"Defend Nils", turn limit 11**. A defend map, so survival to turn 11 is the win condition,
+  not killing 50 enemies. The RAM encoding is still unlocated, but the gameplay question is closed
 
 ---
 

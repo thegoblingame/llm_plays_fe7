@@ -35,6 +35,10 @@ Every entry is tagged with how much it can be trusted:
 | Gold — **candidate only** | `0x0202BC00` | **Unverified** |
 | Game mode byte | `0x02025080` | Unverified |
 | Menu structs | **dynamic** — `0x020251E8` / `0x020252C0` / `0x02025470` seen | see Menus |
+| **Combat forecast — `gBattleActor`** | `0x0203A3F0` | Confirmed |
+| **Combat forecast — `gBattleTarget`** | `0x0203A470` | Confirmed |
+| **Item / weapon data table (ROM)** | `0x08BE222C` | Confirmed |
+| **Staff target-select proc** | **dynamic** — find by ROM script pointer `0x08B96998`; target at `+0x2C` | Confirmed |
 | **Movement range grid** — row data | `0x030004AC` (IWRAM) | Confirmed |
 | Movement range grid — row pointer base for `y=0` | `0x03000448` (IWRAM) | Confirmed |
 | Second map layer, purpose unknown | `0x020302D8` → `0x02030344` | Unverified |
@@ -349,7 +353,7 @@ through it shifts the layout — an earlier read caught `"Turn"` at this offset 
 turn banner. So read it while the map cursor is idle, and sanity-check that the value looks like
 a terrain name.
 
-### Menu labels DO pass through this buffer — Confirmed
+### Menu labels DO pass through this buffer — **partly wrong, see correction below**
 
 Previously listed here as "worth pursuing, untested". It works: with the unit action menu open
 and its highlight on the last entry, `0x0202A5B4` read `57 61 69 74 00` = **`"Wait"`**.
@@ -366,6 +370,31 @@ read 0x0202A5B4      -> the highlighted entry's label, as ASCII
 Used exactly that way to commit a move: menu struct read `count=3, index=2`, and the text buffer
 independently read `"Wait"`. Two unrelated sources agreeing on the same entry, which is a much
 stronger guarantee than "Wait is always last" on its own.
+
+#### Correction (2026-08-27): the buffer does NOT track the ACTION-menu highlight
+
+It read `"Wait"` at index **2 of 4** and again at index **0 of 4** on the same menu. The earlier
+agreement was a coincidence: `"Wait"` is simply the last label the menu drew, and the action
+menu has no per-entry description panel to re-render. **Do not use this buffer to read the
+action-menu highlight.**
+
+It *does* track the highlight in lists that have a description panel, which is most of them:
+
+| State | What `0x0202A5B4` holds |
+|---|---|
+| Action menu | `"Wait"`, always — the last label drawn. Useless |
+| Item list / staff list | the highlighted item's **use-description**, updating per highlight (`"Restores HP."` = Heal, `"Restores some HP."` = Vulnerary) |
+| Staff target select | `"Select a character to restore HP to."` |
+| Rescue target select | `"…unit to rescue."` |
+| Trade partner select | `"…unit to trade with."` (start often overwritten) |
+| Trade screen, on open | the **partner's name** (`"Raven"`) |
+| Trade screen, cursor moved | the **item name** under the cursor (`"Hand axe"`) |
+| Refused action | `"There's no need for that."` (Vulnerary at full HP) |
+| Level-up | the unit's name, then `"…increased."` |
+
+Menu *labels themselves* are not in EWRAM at all: with the action menu open,
+`search_memory(text="Staff")` and `text="Trade"` both returned **0 matches**. They are drawn
+straight to VRAM as tiles.
 
 ---
 
@@ -621,6 +650,187 @@ non-`0xFF` destination is *necessarily* an input problem.
 
 ---
 
+## Unit actions — staff, item, trade — verified end-to-end (2026-08-27)
+
+Same standard as the move procedure above: every step confirmed by effect, so a failure is
+attributable to the step that failed. Derived on Ch. (Hector mode) turn 5. Full working log:
+`attempts/8.27.2026_staff_item_trade.md`.
+
+### The action menu's entry order — Confirmed
+
+FE7 builds the unit action menu by fixed priority and omits entries that don't apply, so the
+**count tells you which entries are present** once you know the order. Probed entry by entry
+with `A` … `B` on a 5-entry menu:
+
+```
+Attack, Staff, Rescue, Item, Trade, …, Wait   <- Wait is always LAST
+```
+
+| Unit / situation | Count | Entries |
+|---|---|---|
+| Lyn (11,4), no adjacent enemy, has items, adjacent allies | 3 | `Item`, `Trade`, `Wait` |
+| Lucius (11,2), staff + one wounded adjacent ally | 4 | `Staff`, `Item`, `Trade`, `Wait` |
+| Lucius (10,2), staff + green NPC and ally adjacent | 5 | `Staff`, …, `Item`, `Trade`, `Wait` |
+| Hector (11,6), adjacent enemy + three adjacent allies | 5 | `Attack`, `Rescue`, `Item`, `Trade`, `Wait` |
+
+Hector's menu was pinned directly: index 0 opened a weapon list of **count 3** (his three
+usable axes, out of four carried items) = `Attack`; index 1 put `"…unit to rescue."` in the
+ASCII buffer = `Rescue`; index 3 put `"…unit to trade with."` there and then the trade screen
+= `Trade`. Indices 2 and 4 follow by elimination.
+
+> **Do not hardcode an index.** Derive it from the count plus the order above, then *verify by
+> effect* before committing — the count changes with adjacency and terrain, and the 5-entry
+> Lucius case has an unidentified extra entry (see Open questions).
+
+### Identifying a submenu once you press `A`
+
+All of `Attack` / `Staff` / `Item` / `Rescue` / `Trade` are recoverable with `B`. Only `Wait`
+commits. Distinguishing signatures, all read from memory:
+
+| Entry | Signature after `A` |
+|---|---|
+| `Attack` | new menu, count = number of **equippable weapons** |
+| `Staff` | new menu, count = number of **staves** (weapon type 4) in inventory; ASCII holds that staff's use-description |
+| `Item` | new menu, count = number of **items**; index == inventory slot index exactly |
+| `Rescue` | no menu; ASCII contains `"unit to rescue."` |
+| `Trade` | no menu; ASCII contains `"unit to trade with."` |
+
+### Staff use
+
+```
+ 1. 0x0202BC07 == 0x00                         player phase
+ 2. unit +0x0C low byte == 0x00                BASELINE, before any input
+ 3. cursor onto the unit, A                    -> +0x0C bit 0 == 1
+ 4. read movement grid, move, A                -> +0x10/+0x11 == destination
+ 5. locate the action menu by diff             -> count; index 0 is Staff when count says so
+ 6. A                                          -> ASCII 0x0202A5B4 reads the staff's
+                                                  use-description ("Restores HP." for Heal)
+ 7. navigate the staff list (count == staves), A
+                                               -> ASCII reads
+                                                  "Select a character to restore HP to."
+ 8. read the target pointer (below); Left/Right to cycle; re-read to confirm
+ 9. A                                          -> target +0x13 rises
+10. press A until unit +0x0C bit 1 sets        -> a LEVEL-UP screen can block here
+11. confirm: staff uses -1, staff moved to inventory slot 0, weapon rank +2
+```
+
+**Heal amount = 10 + the user's Str/Mag.** Predicted-then-observed twice: Bartre `4 → 27` and
+a second unit `10 → 33`, both with Lucius at Str 13.
+
+**Green / NPC units are valid staff targets** — Confirmed; the initial highlight at (10,2) was
+`0x0202DCD0`, slot 0 of the green array.
+
+### Item use (Vulnerary)
+
+Self-targeted; there is **no target-select step**.
+
+```
+action menu -> Item -> item list (index == inventory slot) -> A
+  -> item sub-menu, count 3, index 0 = "Use"
+  -> A
+```
+
+Confirmed by a 4 KiB diff over `0x0202BB00`:
+
+```
+unit +0x0C  0x01 -> 0x02      spent
+unit +0x13  10   -> 20        Vulnerary restores a FLAT 10, not Str-scaled
+unit +0x25  2    -> 1         uses, decremented IN PLACE (no inventory reorder)
+```
+
+**A full-HP control was run.** With the user at 27/27 the menu counts were identical (3 / 4 / 3)
+and index 0 was still `Use`, but pressing `A` changed **nothing** in the 4 KiB unit window and
+the ASCII buffer read `"There's no need for that."`. So the sub-menu shape does not tell you
+whether the item is usable — **verify the effect**, and treat an unchanged `+0x13` plus that
+string as a refusal.
+
+### Trade
+
+`Trade` does **not** consume the action: after `B` exits the trade screen the unit's `+0x0C` is
+still `0x01` and the action menu re-opens, so you can trade *and then* attack or wait.
+
+Partner selection behaves like staff targeting — `Left`/`Right` cycle, and the highlighted
+partner is readable (below). Opening the screen puts the **partner's name** in the ASCII buffer
+(`"Raven"`), which is a free cross-check.
+
+Trade screen driving. The two cursor fields sit inside a dynamically-allocated struct, so
+locate them by diff (`Down` moves the row byte; `Left`/`Right` moves the column byte):
+
+```
+column byte   0 = the acting unit, 1 = the partner
+row byte      0-based row within the current column, wraps
+A on an acting-unit item  -> auto-jumps to column 1
+A on a partner item       -> auto-jumps to column 0, row = first empty slot
+Left/Right                -> switch column; a no-op if already there
+```
+
+Confirmed cross-unit transfer, predicted before pressing:
+
+```
+before   Hector  1F 0B | 28 0B | 3E 23 | 28 06 | 00 00
+         Raven   0D 0F | 28 14 | 28 14 | 00 00 | 00 00
+after    Hector  1F 0B | 28 0B | 3E 23 | 28 06 | 28 14
+         Raven   0D 0F | 28 14 | 00 00 | 00 00 | 00 00
+```
+
+The donor's list **compacts**; the receiver's item lands in its first empty slot. The change is
+already committed in the unit structs before `B` is pressed. **The only trustworthy check is
+reading both units' 10-byte inventory blocks at `+0x1E` before and after.**
+
+### Target readback — how to know which unit is highlighted
+
+`gBattleTarget` is **not** the answer for staves: during staff target select
+`0x0203A474` (its class pointer, the documented staleness gate) reads `0`, correctly reporting
+the pair as stale. It *is* populated once the staff resolves, so it works as an after-the-fact
+record, not a pre-commit readback.
+
+**(a) Signature lookup — staff target select only, Confirmed.** The proc that runs staff
+targeting has ROM script pointer `0x08B96998` at its `+0x00`, and the highlighted target's
+unit-struct pointer at `+0x2C`:
+
+```
+search_memory(bytes=[0x98,0x69,0xB9,0x08], region="EWRAM", align=4)
+    -> exactly 1 match while in staff target select
+    -> exactly 0 matches otherwise            <- so it doubles as the state gate
+target_unit = read32(match + 0x2C)
+```
+
+Samples: proc at `0x02025338` → `0x0202BEB8` (Bartre); proc at `0x0202511C` → `0x0202DCD0`
+(green NPC), then `0x0202BF00` after one `Right`. The **proc address is dynamic** — search for
+the signature, never hardcode.
+
+**(b) Diff lookup — general, Confirmed on three different selection states.** In *any*
+unit-target selection, one 4-byte EWRAM slot holds the highlighted unit's struct address and it
+is what moves on a direction press:
+
+```
+snapshot_memory(address=0x02024000, length=8192)
+press Right
+diff_memory(predicate="changed", width=4)
+   -> the entry whose before/after are both 0x0202xxxx unit-struct addresses is the highlight
+```
+
+Located `0x02025148` (staff target), `0x02024F2C` (trade partner) and `0x020251B4` (rescue
+target) this way. This is the readback `fe7_act(action:"attack")` has been missing, and it
+generalises to attack target cycling.
+
+> **Trap, already sprung once.** `0x020253D0` — the trade proc's `+0x28` — holds the
+> **initial** partner and then goes stale. It stayed on Raven across three `Right` presses
+> while the real highlight moved to two other units. Location is not semantics; use (b).
+
+### A level-up blocks the spent flag — Confirmed
+
+After the second heal, `+0x0C` stayed at `0x01` and the staff uses stayed unchanged across two
+consecutive reads. The ASCII buffer read `"Lucius"` and `"…increased."` — a level-up screen was
+up. Three `A` presses later the action committed: level `2 → 3`, exp `99 → 4`, Skl `+1`, staff
+uses `6 → 5`, `+0x0C → 0x02`.
+
+**Poll `+0x0C` bit 1 and keep pressing `A` until it sets.** A single post-action read is not
+enough, and this will hit any action that grants experience.
+
+
+---
+
 ## Menus
 
 Every menu shares one struct layout:
@@ -638,22 +848,39 @@ Every menu shares one struct layout:
 
 ### Menus are allocated dynamically — do NOT hardcode the address
 
-Observed slots so far: `0x020251E8`, `0x020252C0`, `0x02025470`. The *same* logical menu
-(Lyn's action menu) appeared at `0x020252C0` on one run and `0x020251E8` on another.
+Observed slots: `0x020251E8`, `0x020252C0`, `0x02025470`, and — in one 2026-08-27 session, for
+the **action menu alone** — `0x0202532C`, `0x02024F60`, `0x020256F8`, `0x020250A4`. The *same*
+logical menu appears in a different slot almost every time. Sub-menus and item lists shared the
+same arena (`0x02025548`, `0x020255B4`, `0x020256F8` all seen).
 
-`+0x03` is **not** a trustworthy open/closed test either: `0x020251E8` read `0x05` while its
-menu was demonstrably live — the next `A` press selected its index-0 entry and opened the
-item list.
+`+0x03` is **not** a trustworthy open/closed test, and it fails in *both* directions:
+`0x020251E8` read `0x05` while its menu was demonstrably live, and the item sub-menu read
+`03 01 01 00` — state `0x00` — while it was the menu accepting input.
+
+Stale copies survive. `0x020252C0` still held a plausible-looking `03 00 00 05` sub-menu while
+the live sub-menu was at `0x020256F8`. Reading the address you used last time gives a
+believable wrong answer, not an obvious one.
 
 **Locate the live menu by behaviour instead** (3 calls, always correct):
 
 ```
-snapshot_memory(region="EWRAM")
+snapshot_memory(address=0x02024000, length=8192)   # the UI arena; EWRAM-wide also works
 press Down
 diff_memory(predicate="changed", width=1)
    -> index byte + its mirror appear as an adjacent pair
    -> entry count is at (index address - 1)
 ```
+
+> **Diff twice.** `press_sequence` returns when the input queue drains, not when the game has
+> settled. The first diff after a press routinely catches a mid-transition frame — 30-70
+> changes of sprite/OAM churn with no index pair in sight. Re-running the *same* diff a moment
+> later returned the settled 4-7 changes with the pair obvious. This burned three lookups
+> before it was recognised.
+
+**Idle noise floor for the 8 KiB window at `0x02024000` is ~5 bytes**: `0x02024C84`,
+`0x02024C8A`, `0x02024C8B`, plus one 16-bit counter whose address moves with allocation
+(`0x02025154/55`, `0x02025010/11`, `0x020253DC/DD` all observed). Everything else in a
+post-direction-press diff is signal.
 
 Also useful as a cross-check: the highlight is drawn as tile rows near `0x020235A4` /
 `0x02023624` with stride `0x80`, so a menu move shows up there too.
@@ -664,8 +891,14 @@ Also useful as a cross-check: the highlight is drawn as tile rows near `0x020235
 |---|---|---|
 | Field menu (cursor on empty tile) | 5 | `Unit`, `Status`, `Options`, **`Suspend`**, `End` |
 | Unit action menu (Lyn, no adjacent enemy) | 2 | `Item`, `Wait` |
-| Item list (Lyn) | 3 | her three inventory slots, in inventory order |
+| Item list | = item count | the unit's inventory slots, **index == slot index** |
+| Staff list | = staff count | only items of weapon type 4, in inventory order |
+| Attack weapon list | = equippable weapons | subset of the inventory |
+| Item sub-menu (after picking an item) | 3 | `Use`/`Equip`, …, and `Discard` last |
 | **Preparations menu** | 5 | `Pick Units`, `Trade`, `Fortune`, `Check Map`, `Save` |
+
+Full action-menu ordering (`Attack, Staff, Rescue, Item, Trade, …, Wait`) and the per-entry
+signatures are in **Unit actions — staff, item, trade**, above.
 
 ### The Preparations menu uses a DIFFERENT layout
 
@@ -880,6 +1113,225 @@ it would be directly useful for AI decisions.
 
 ---
 
+## Combat forecast — FOUND, `0x0203A3F0` / `0x0203A470` — Confirmed
+
+The derived combat stats (Atk / Hit / Crit / Avoid / AS) are **not computed at draw time** —
+FE7 keeps two 128-byte `BattleUnit` structs, one per combatant, and the forecast panel is
+just a rendering of them. Both are static globals, present at the same addresses across
+save-state reloads and across both units tested.
+
+| Struct | Address | What |
+|---|---|---|
+| `gBattleActor` | `0x0203A3F0` | the attacking unit |
+| `gBattleTarget` | `0x0203A470` | the unit being attacked |
+
+Size is `0x80` (128) bytes each, and they are adjacent.
+
+### How to re-find them in one call
+
+Each struct **begins with a copy of the 72-byte unit struct**, so the character pointer is
+at `+0x00`. Searching EWRAM for a unit's character pointer therefore returns its live array
+slot *and* its battle copy:
+
+```
+search_memory(bytes=[0xE8,0xCE,0xBD,0x08], region="EWRAM", align=4)
+  -> 0x202BFD8  (live player slot 9)   0x203A3F0  (gBattleActor)
+```
+
+This is how they were located, and it is the robust way to re-derive them if a future
+build or chapter moves them. Do **not** hunt for the numbers themselves.
+
+### Layout
+
+Offsets `0x00`–`0x47` are the ordinary unit struct, with three differences from the live copy:
+
+| Offset | In the battle copy |
+|---|---|
+| `+0x13` current HP | **projected post-battle HP** — see the projection section below |
+| `+0x1A` | **total Con** (the live unit reads `0` here) |
+| `+0x1D` | **total Mov** (the live unit reads `0` here) |
+| `+0x1E` inventory | reordered so the **equipped weapon is slot 0** |
+
+`+0x1A` / `+0x1D` are worth knowing on their own — Con and Mov are not otherwise readable
+from the live unit struct. Observed: Hero Con 9 / Mov 6, Mage Con 6 / Mov 5, Lord (Hector)
+Con 13 / Mov 5, Armour Con 13 / Mov 4.
+
+Offsets `0x48`–`0x7F` are the battle fields. All the stat fields are **u16**:
+
+| Offset | Actor addr | Target addr | Field |
+|---|---|---|---|
+| `+0x48` | `0x0203A438` | `0x0203A4B8` | u16 weapon **after** the projected battle (low = item ID, high = uses) |
+| `+0x4A` | `0x0203A43A` | `0x0203A4BA` | u16 weapon **before** (low = item ID, high = uses) |
+| `+0x50` | `0x0203A440` | `0x0203A4C0` | u8 weapon **type** — 0 sword, 1 lance, 2 axe, 3 bow, 4 staff, 5 anima, 6 light, 7 dark |
+| `+0x53` | `0x0203A443` | `0x0203A4C3` | s8 weapon-triangle **HIT** bonus |
+| `+0x54` | `0x0203A444` | `0x0203A4C4` | s8 weapon-triangle **DMG** bonus |
+| `+0x55` | `0x0203A445` | `0x0203A4C5` | u8 **terrain ID** of the tile this unit stands on |
+| `+0x56` | `0x0203A446` | `0x0203A4C6` | u8 terrain **DEF** bonus |
+| `+0x57` | `0x0203A447` | `0x0203A4C7` | u8 terrain **AVO** bonus |
+| `+0x5A` | `0x0203A44A` | `0x0203A4CA` | **ATK** |
+| `+0x5C` | `0x0203A44C` | `0x0203A4CC` | **DEF** — Def *or* Res, picked by the **opponent's** weapon type |
+| `+0x5E` | `0x0203A44E` | `0x0203A4CE` | **AS** (attack speed) |
+| `+0x60` | `0x0203A450` | `0x0203A4D0` | **HIT** |
+| `+0x62` | `0x0203A452` | `0x0203A4D2` | **AVO** |
+| `+0x64` | `0x0203A454` | `0x0203A4D4` | **effective HIT** — this is the number on screen |
+| `+0x66` | `0x0203A456` | `0x0203A4D6` | **CRIT** |
+| `+0x68` | `0x0203A458` | `0x0203A4D8` | **DODGE** (critical avoid) |
+| `+0x6A` | `0x0203A45A` | `0x0203A4DA` | **effective CRIT** — this is the number on screen |
+| `+0x70` | `0x0203A460` | `0x0203A4E0` | u8 level at battle start |
+| `+0x71` | `0x0203A461` | `0x0203A4E1` | u8 exp at battle start |
+| `+0x72` | `0x0203A462` | `0x0203A4E2` | u8 HP at battle start |
+
+`+0x4C`, `+0x4D`, `+0x52` carry small values (`1`/`3`/`1`) whose meaning was not pinned
+down. `+0x7B` / `+0x7C` also move during a forecast. Treat all of these as unknown.
+
+**Displayed damage is not stored** — it is `my ATK − opponent DEF`, computed at draw time.
+Both commits in this session confirmed it against real HP loss.
+
+### The formulas — Confirmed
+
+Every one of these was verified by *predicting the value first* and then reading it, and
+then again by writing a stat and predicting how the field would move. Integer division
+truncates.
+
+```
+ATK   = Str (or Mag) + weapon Mt + triangleDmg + supportAtk
+DEF   = (opponent's weapon is magic ? Res : Def) + terrainDef + supportDef
+AS    = Spd - max(0, weapon Wt - Con)
+HIT   = weapon Hit + Skl*2 + Lck/2 + triangleHit + supportHit
+AVO   = AS*2 + Lck + terrainAvo + supportAvo
+CRIT  = weapon Crit + Skl/2 + supportCrit
+DODGE = Lck + supportDdg
+
+effHIT  = HIT - opponent AVO,   clamped to [0, 100]
+effCRIT = CRIT - opponent DODGE, floor 0        <- when this unit is the ATTACKER
+effCRIT = CRIT - opponent DODGE - 4, floor 0    <- when this unit is the DEFENDER
+```
+
+> **The defender's effective crit carries a constant `-4`.** This is not a mistake and not
+> a one-off: it held across six readings spanning two attackers, three weapons, and
+> changing values on both sides — including one where the attacker's DODGE was changed from
+> 3 to 0 (defender effCRIT went 1 → 4) and one where the defender's CRIT was raised to 25
+> against DODGE 9 (effCRIT = 12 = 25 − 9 − 4). The attacker never gets the `-4`.
+>
+> **Where the 4 comes from is unknown.** It is *not* a support bonus (supports land in
+> `DODGE` itself, see below) and not terrain. It is also **not established whether the rule
+> is "defender" or "enemy"** — every sample was a player unit attacking an enemy, so the
+> two readings are indistinguishable. Testing it needs a forecast where an enemy is the
+> actor, i.e. during the enemy phase.
+>
+> Practical consequence: **read `+0x6A`, do not recompute it.**
+
+### Support bonuses are folded in — Confirmed by a live control
+
+Recomputing these stats from base stats will silently disagree for any unit standing near
+allies. Hector at `(11,6)` read DEF 15 / AVO 31 / CRIT 8 / DODGE 9 while his base formulas
+give 14 / 26 / 6 / 4 — `+1 Def, +5 Avo, +2 Crit, +5 Ddg`, with ATK and HIT unaffected.
+
+Proven, not assumed: writing `x = 20` into the five player units within three tiles and
+re-entering the forecast dropped every one of those fields to **exactly** the base-formula
+value. Raven, who had no allies in support range, matched the bare formulas from the start.
+
+**So `+0x5A`–`+0x6A` are the game's own numbers, and they are the only trustworthy source.**
+The formulas above are for sanity-checking a read, not for replacing it.
+
+### Terrain is folded in too — Confirmed
+
+The enemy mage at `(8,7)` carried terrain ID `29` with `terrainDef = 1`, `terrainAvo = 20`
+at `+0x56` / `+0x57`, and its DEF and AVO were exactly base `+1` and `+20`. Terrain ID `23`
+(the tiles at `(9,6)` and `(11,6)`) gives `0` / `0`.
+
+This makes `+0x55` a **second, independent read of the terrain ID** for two tiles at once —
+useful given that the terrain array itself is still unlocated. The mapping ID → name is
+*not* established; `29` is a forest only by inference from its bonuses.
+
+### Weapon triangle — Confirmed, including reaver weapons
+
+Hector (Iron Axe) vs an enemy holding an **Axereaver** read `+0x53 = 0xE2` (−30 hit) and
+`+0x54 = 0xFE` (−2 dmg) on Hector, and `+30` / `+2` on the enemy — the reaver's reversed,
+doubled triangle, exactly. A plain axe-vs-anima matchup read `0` / `0` on both sides.
+
+### `+0x13` is a projection, NOT a prediction — Confirmed, and this matters
+
+At target select, both `+0x13` fields hold post-battle HP and both weapon-uses counts have
+been decremented. It is very tempting to read this as an outcome oracle. **It is not.**
+
+It is a deterministic **"every blow connects, no criticals"** projection:
+
+- It is byte-identical across a `B` → `A` round trip out of and back into target select
+  (a 512-byte diff over the whole pair returned **0 changes**).
+- Setting the target's Lck to 90 drove the actor's `effHIT` to **0** — and the projection
+  *still* showed the target at 0 HP. A 0%-to-hit attacker cannot roll two hits.
+
+Two attacks were committed to check it against reality, and both diverged:
+
+| | projection | actual |
+|---|---|---|
+| Raven → mage | Raven 26→16, mage 22→**0** | Raven 26→16, mage 22→**22** (both swings missed) |
+| Hector → armour | Hector 14→7, enemy 15→**0** | Hector 14→7, enemy 15→**4** (one of two swings missed) |
+
+The *attacker's* HP matched both times only because the single enemy counter happened to
+connect both times. Do not read that as reliability.
+
+**What it is genuinely good for:** `uses(+0x4A) − uses(+0x48)` is the **number of attacks
+that side will make**, which is the doubling indicator. Verified on five samples including
+a negative one (Raven with a Tomahawk, AS 4 vs AS 7, showed 1 attack; with a Hand Axe,
+AS 16 vs AS 7, showed 2). And `+0x13` answers *"can this kill at all?"* — if the projection
+does not reach 0, no sequence of rolls will.
+
+### Target readback — solved
+
+`gBattleTarget` identifies the enemy currently under the target cursor, by its own copy of
+the unit struct: `+0x0B` roster index, `+0x10`/`+0x11` tile. Reading `0x0203A47B` and
+`0x0203A480`/`0x0203A481` at target select returned `0x91` and `(8,7)` — the correct enemy.
+This is the readback `fe7_act(action:"attack")` has been missing.
+
+**Not demonstrated: that it updates as you cycle targets with Left/Right.** No board
+position with two valid targets was available, and manufacturing one by writing an enemy's
+coordinates failed (see negative results). The mechanism makes updating near-certain, but
+it is **Unverified** and should be checked the first time two targets are genuinely in range.
+
+### Gating a read — the structs go stale, they are not cleared
+
+The pair persists after you back out, holding a mixture of old and scratch values, exactly
+like the movement grid does. Backing out to the weapon list **zeroes `gBattleTarget +0x04`**
+(the class pointer) and overwrites some of the target's stat fields with the *actor's*
+weapon-preview numbers.
+
+```
+gate: read32(0x0203A474)  (gBattleTarget +0x04, class pointer)
+      nonzero and 0x08xxxxxx  ->  a target is selected, the pair is live
+      zero                    ->  stale, do not read
+```
+
+Cross-check available for free: at target select the ASCII buffer at `0x0202A5B4` holds
+**the target's equipped weapon name** ("Thunder", "Axereaver" both observed).
+
+### Reproduction recipe
+
+From the saved board (turn 5, player phase, Raven = player slot 9 at `(9,6)` with his
+action menu open, enemy slot 16 = a Mage at `(8,7)` holding Thunder):
+
+```
+press_sequence(["A","A"], frames=4, release_frames=40)   # Attack -> weapon -> target select
+read_range(0x0203A3F0, 256)
+```
+
+Expected, exactly:
+
+```
+gBattleActor  (Raven, Hand Axe Mt7/Hit60/Wt12/Crit0, Str13 Skl19 Spd19 Def9 Res5 Lck3 Con9)
+  ATK 20   DEF 5    AS 16   HIT 99   AVO 35   effHIT 65   CRIT 9   DODGE 3   effCRIT 9
+gBattleTarget (Mage, Thunder Mt8/Hit80/Wt6/Crit5, Str7 Skl7 Spd7 Def3 Res8 Lck0 Con6, forest)
+  ATK 15   DEF 4    AS 7    HIT 94   AVO 34   effHIT 59   CRIT 8   DODGE 0   effCRIT 1
+```
+
+Note `DEF 5` on the actor — that is Raven's **Res**, because the mage attacks with magic;
+his Def of 9 is not used. Back out with `B`; **a third `A` commits the attack.**
+
+The whole pair is reproducible from a cold read in about three calls.
+
+---
+
 ## Known IDs
 
 Class and character IDs were read directly from the ROM structs (offset `0x04` of each);
@@ -947,6 +1399,82 @@ tested, **but this formula is Unverified** and there is a live contradiction:
 | `0x03` | Lyn | Confirmed (name visible on screen) |
 | `0x87`, `0x88` | Generic brigands | Unverified |
 
+### The item table — `0x08BE222C` in ROM — Confirmed
+
+Every weapon's Mt / Hit / Wt / Crit / range / durability is readable straight out of ROM,
+which is what makes the combat forecast *predictable* rather than merely readable.
+
+```
+entry(itemID) = 0x08BE222C + 0x24 * itemID        (36-byte entries, item 0 is a null entry)
+```
+
+| Offset | Size | Field |
+|---|---|---|
+| `0x00` | u16 | name text ID |
+| `0x02` | u16 | description text ID |
+| `0x04` | u16 | use-description text ID |
+| `0x06` | u8 | **item ID** (redundant, good for validating the base) |
+| `0x07` | u8 | **weapon type** — 0 sword, 1 lance, 2 axe, 3 bow, 4 staff, 5 anima, 6 light, 7 dark, **9 = consumable / non-weapon item**; bit 7 set = ballista |
+| `0x08` | u32 | attribute flags |
+| `0x14` | u8 | **max uses** |
+| `0x15` | u8 | **Mt** |
+| `0x16` | u8 | **Hit** |
+| `0x17` | u8 | **Wt** |
+| `0x18` | u8 | **Crit** |
+| `0x19` | u8 | **range**, packed — **high nibble = min, low nibble = max** |
+| `0x1A` | u16 | cost per use |
+
+Found by searching ROM for Iron Sword's stat block, which is unique:
+
+```
+search_memory(bytes=[0x2E,0x05,0x5A,0x05,0x00,0x11,0x0A,0x00],
+              address=0x08000000, length=16777216)   -> exactly 1 match, 0x08BE2264
+entry base = 0x08BE2264 - 0x14 = 0x08BE2250 = entry(1)
+```
+
+**Confirmed** by decoding five consecutive entries and matching all of them against known
+FE7 values: Iron Sword 5/90/5/46, Slim Sword 3/100/2/30, Steel Sword 8/75/10/30,
+Silver Sword 13/80/8/20, Iron Blade 9/70/12/35. The range nibble order was settled by the
+ballista entries (`0x34`–`0x36`), which read `0x3A` = 3–10.
+
+Item IDs confirmed this session by reading the name out of `0x0202A5B4` while the item was
+equipped in a forecast:
+
+| ID | Item | Mt | Hit | Wt | Crit | Range | Uses |
+|---|---|---|---|---|---|---|---|
+| `0x01` | Iron Sword | 5 | 90 | 5 | 0 | 1 | 46 |
+| `0x0D` | (sword) | 9 | 75 | 7 | 30 | 1 | 20 |
+| `0x1E` | **Axereaver** | 10 | 70 | 11 | 5 | 1 | 15 |
+| `0x1F` | **Iron Axe** | 8 | 75 | 10 | 0 | 1 | 45 |
+| `0x28` | **Hand Axe** | 7 | 60 | 12 | 0 | 1–2 | 20 |
+| `0x29` | Tomahawk (A rank) | 13 | 65 | 14 | 0 | 1–2 | 15 |
+| `0x38` | **Thunder** | 8 | 80 | 6 | 5 | 1–2 | 35 |
+
+`0x1F` was previously **Inferred** as Iron Axe from two brigands; the ROM entry matches
+FE7's Iron Axe exactly, so it is now **Confirmed**. `0x1E`, `0x28` and `0x38` were named
+directly from the text buffer during a forecast.
+
+#### The offsets above are correct — re-verified 2026-08-27
+
+A later session suspected the block was off by one (uses at `+0x15` rather than `+0x14`). It is
+not; the table as written is right. Four more entries were decoded and every field, **including
+the `+0x1A` cost-per-use**, matches canonical FE7:
+
+| ID | Item | type | uses `+0x14` | Mt | Hit | Wt | Crit | range `+0x19` | g/use `+0x1A` |
+|---|---|---|---|---|---|---|---|---|---|
+| `0x28` | Hand Axe | 2 axe | 20 | 7 | 60 | 12 | 0 | `0x12` 1–2 | 15 |
+| `0x3E` | **Lightning** | 6 light | 35 | 4 | 95 | 6 | 5 | `0x12` 1–2 | 18 |
+| `0x4A` | **Heal** | 4 staff | 30 | 0 | 100 | 2 | 0 | `0x11` 1–1 | 20 |
+| `0x6B` | Vulnerary | **9** | 3 | 0 | 0 | 0 | 0 | `0x11` | 100 |
+
+`uses × cost` reproduces the shop price in every case (Hand Axe 300, Lightning 630, Heal 600,
+Vulnerary 300), which is an independent check on the whole block's alignment.
+
+**Filtering by `+0x07` is how you build the staff list and the attack weapon list** — the
+in-game staff list contains exactly the type-4 entries of the unit's inventory, in inventory
+order. Confirmed: Lucius carried `0x3E` (type 6) and `0x4A` (type 4), and his staff list had
+count 1.
+
 ### Item IDs
 
 | Item ID | Item | Max uses | Confidence |
@@ -954,13 +1482,18 @@ tested, **but this formula is Unverified** and there is a live contradiction:
 | `0x01` | Iron Sword | 46 | **Confirmed** |
 | `0x6B` | Vulnerary | 3 | **Confirmed** |
 | `0x1F` | Iron Axe | 45 | Inferred |
+| `0x3E` | **Lightning** (light tome) | 35 | **Confirmed** — ROM stats + price match |
+| `0x4A` | **Heal** (staff) | 30 | **Confirmed** — ROM stats + price match, and using it healed `10 + Mag` |
 
 `0x01` and `0x6B` were upgraded from Inferred to Confirmed by a labeling screenshot of Lyn's
 item list, which rendered them as "Iron sword 46 / Vulnerary 3 / Vulnerary 3" — matching the
 IDs and durabilities already read from her inventory block.
 
-`0x1F` (Iron Axe) remains **Inferred**: the ID and its 45 uses are real reads off both
-brigands, but no screen has yet shown an enemy's inventory by name.
+`0x1F` (Iron Axe) is now **Confirmed** — see the item table section immediately above; its
+ROM entry reads 8 Mt / 75 Hit / 10 Wt / 45 uses, which is FE7's Iron Axe exactly.
+
+> **Prefer the ROM item table to this list.** It is complete, authoritative, and one read
+> away. This table is only a convenience index of IDs seen in play.
 
 ---
 
@@ -1011,6 +1544,13 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 
 ## Open questions
 
+- ~~**Objective text**~~ — **RESOLVED by screenshot, 2026-08-27.** The status window renders
+  the objective and the turn limit directly: this chapter reads **"Defend Nils"** with
+  **"5 / 11 Turn"**. So it is a DEFEND map on an 11-turn limit, not a rout — which changes
+  how it should be played. Still not located in RAM as ASCII (the text buffer never held it),
+  so this is a rendering-only find; locating the encoding is still open, but the gameplay
+  question it was blocking is answered
+
 - Gold
 - Chapter / map ID
 - **Terrain / map tile array** — still unlocated, but no longer blocks pathing: the movement
@@ -1019,9 +1559,24 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   table ending at its own data), not to search for terrain IDs
 - **True map dimensions** — the grid buffer is 24 wide × 27 rows *including* a 2-row top border,
   so the real map is smaller; exact width/height not yet derived
-- **Derived combat stats** (Atk / Crit / Hit / Avoid) — a labeling screenshot showed the game
-  computes and displays these, so they exist in RAM. Locating them would enable combat
-  prediction without simulating the formulas
+- ~~**Derived combat stats** (Atk / Crit / Hit / Avoid)~~ — **RESOLVED: the `BattleUnit`
+  pair at `0x0203A3F0` / `0x0203A470`.** See the Combat forecast section. Three follow-ups
+  remain open:
+  - **Where the defender's `-4` effective-crit constant comes from**, and whether the rule
+    is "defender" or "enemy" — every sample was a player attacking an enemy, so the two are
+    indistinguishable. Needs a forecast captured during the **enemy phase**
+  - **Whether `gBattleTarget` updates as Left/Right cycle targets.** Near-certain but
+    undemonstrated for *attack*. For **staff** targeting the equivalent question is now
+    **resolved**: the highlighted target pointer does update on `Right`, and the general
+    diff-based locator in "Unit actions" finds it for attack targeting too
+  - **`+0x4C` / `+0x4D` / `+0x52` / `+0x7B` / `+0x7C`** in the `BattleUnit` tail
+- **Whether weapon durability is consumed on a miss.** Two committed battles say **no** —
+  Raven missed every swing and his Hand Axe stayed at 20/20 uses, while Hector landed one
+  of two swings and spent exactly 1. This contradicts the usual understanding of FE7 and
+  rests on 2 observations; treat as **Inferred** and re-test
+- **Terrain ID → name mapping.** `+0x55` of each `BattleUnit` gives a numeric terrain ID
+  (`23` plain, `29` gives +1 Def / +20 Avo) — pair it with the name from `0x0202A5B4` under
+  the cursor to build the table cheaply
 - Whether `+0x43` vs `+0x45` encode different things (moved vs acted?), and confirming either
   on a *player* unit
 - Purpose of the second `"Mark"` copy at `0x02020160`
@@ -1029,6 +1584,17 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 - Meaning of the remaining `0x00400000` state flag bits at unit `+0x0C` (bit 0 is known:
   selected/in motion)
 - The menu allocator — which slot a given menu lands in, and why it varies between runs
+- **The 5th entry of Lucius's action menu at (10,2)** — count went 4 → 5 when a green NPC
+  became adjacent. `Talk` and `Rescue` are both plausible; not probed because his action had
+  already been spent. Matters only if a tool derives indices from the count
+- **Whether green / NPC units can be traded with.** They *can* be staff-targeted (Confirmed);
+  the trade probe only ever had blue candidates
+- **What the `Attack` weapon list does with a weapon the unit cannot wield.** Hector's list had
+  count 3 against 4 carried items, which is consistent with "equippable only", but the rule was
+  not tested against rank restrictions
+- **The trade-screen cursor struct.** The column and row bytes were located by diff and their
+  semantics confirmed by effect, but the enclosing struct was not decoded — no count field was
+  found next to either byte, so the row count has to come from the inventory, not the UI
 - ~~Whether a separate NPC / green-unit array exists~~ — **RESOLVED: it does, at `0x0202DCD0`.**
   See the green-array section.
 - What else besides occupancy and `0xFF` can make the game refuse a destination that the cost
@@ -1096,6 +1662,31 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   It only incremented on a later read. Any automation that acts on a post-turn diff must
   wait for the game to settle, not just for the buttons to land. (Finding the phase
   indicator would make this checkable instead of a guess — see Open questions.)
+
+- **Predict the value, then search for it.** The strongest single move available, and the
+  one that found the combat forecast. Weapon stats are in ROM and unit stats are in RAM, so
+  Atk / Hit / Crit / AS can all be *computed* before you look — an address holding a number
+  you derived from first principles is far better evidence than an address that merely
+  changed. Every forecast field here was confirmed that way, and then re-confirmed by
+  writing a stat and predicting how the field would move.
+
+- **A struct that starts with a copy of another struct is findable for free.** The
+  `BattleUnit` pair was located in one call by searching EWRAM for a unit's character
+  pointer: the live slot and the battle copy both came back. Before running a diff, ask
+  whether the thing you want *embeds* something you can already address.
+
+- **"It reproduces exactly" is not "it is correct."** The forecast's projected HP was
+  byte-identical across a menu round trip, which made it look like a reliable outcome
+  oracle. It is a deterministic all-hits projection, and both committed attacks diverged
+  from it. Determinism only rules out randomness; it says nothing about meaning. The test
+  that settled it was forcing the attacker's hit rate to 0 and watching the projection
+  still kill the target.
+
+- **A struct you cannot address can still be found by what moves in it.** Every unit-target
+  selection state (staff target, trade partner, rescue target) keeps the highlighted unit's
+  struct pointer in a dynamically-allocated slot. Snapshot `0x02024000`+8192, press `Right`,
+  diff `width=4`, and take the entry whose before *and* after are both `0x0202xxxx` unit
+  addresses. Three different selection states, three correct hits, no hardcoded address.
 
 - **Confirm from memory, not from the screen.** Screenshots invite misreading pixels.
   Everything here was cross-validated against memory instead: Lyn's stats match her
