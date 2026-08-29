@@ -224,6 +224,39 @@ walks the cursor, and the `A` behind it then lands on the board, where empty gro
 So the press is verified rather than blind: press `Up`, re-read the cursor, and only send `A`
 if the cursor held.
 
+### Menu entries are named in the text buffer — Confirmed, but see the caveat
+
+`0x0202A5B4` also names the **highlighted menu entry**, not just map contents. Observed on
+Lyn Ch.7:
+
+| State | Buffer reads |
+|---|---|
+| field menu just opened (A on empty ground) | `"End."` |
+| a unit's action menu just opened | `"Wait"` |
+| after backing out to the map | `"Defeat Heintz."` — the OBJECTIVE |
+
+Two consequences.
+
+**The objective IS readable from memory** (`"Defeat Heintz."`), so a `fe7_objective` tool needs
+no new research — only a rule for when the buffer is showing it. It is state-dependent, not
+absent; an earlier session caught `"Seize gate"` the same way at a turn boundary.
+
+**⚠️ The field menu opens with End Turn ALREADY HIGHLIGHTED.** The buffer read `"End."` the
+instant A was pressed on empty ground. So a single stray A on bare ground puts the phase one
+press from ending. This was demonstrated accidentally, by a probe script whose cursor was not
+where its author thought — which is exactly how the old `commitWait`/`awaitCommit` retry loops
+behaved, only they did it dozens of presses at a time. It is the concrete justification for the
+cursor-verification guard in `src/fe7.ts`.
+
+> **OPEN — does the reading TRACK the highlight?** Not demonstrated for the ACTION menu. Four
+> `Down` presses left the buffer reading `"Wait"` unchanged, so either the menu had one entry,
+> or the presses never reached it, or that buffer does not refresh per highlight for this menu.
+> It DOES track for item/staff lists (see the menu sections). **A `menuFindEntry(pattern)`
+> primitive — walk the highlight, read the label, press A only on a confirmed match — depends
+> entirely on this, so resolve it before building seize/visit/talk on top.** Best test: a unit
+> with a genuinely multi-entry action menu (one adjacent to an enemy, so Attack/Item/Wait all
+> appear), rather than a lone unit at full HP whose menu may be one entry long.
+
 ### What the cursor readout contains — Confirmed
 
 With the cursor free on the player phase, the text buffer at `0x0202A5B4` describes **whatever
