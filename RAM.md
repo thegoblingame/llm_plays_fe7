@@ -248,14 +248,42 @@ where its author thought — which is exactly how the old `commitWait`/`awaitCom
 behaved, only they did it dozens of presses at a time. It is the concrete justification for the
 cursor-verification guard in `src/fe7.ts`.
 
-> **OPEN — does the reading TRACK the highlight?** Not demonstrated for the ACTION menu. Four
-> `Down` presses left the buffer reading `"Wait"` unchanged, so either the menu had one entry,
-> or the presses never reached it, or that buffer does not refresh per highlight for this menu.
-> It DOES track for item/staff lists (see the menu sections). **A `menuFindEntry(pattern)`
-> primitive — walk the highlight, read the label, press A only on a confirmed match — depends
-> entirely on this, so resolve it before building seize/visit/talk on top.** Best test: a unit
-> with a genuinely multi-entry action menu (one adjacent to an enemy, so Attack/Item/Wait all
-> appear), rather than a lone unit at full HP whose menu may be one entry long.
+### RESOLVED — the buffer holds the LAST entry RENDERED, not the highlighted one
+
+Tested on Lyn Ch.7 with Lyn walked to `(5,4)`, adjacent to an enemy at `(5,5)`, so her action
+menu genuinely contained Attack / Item / Wait. Stepping the highlight with six `Down` presses
+left the buffer reading `"Wait"` every single time.
+
+Three menus, three bottom entries:
+
+| Menu | Buffer | Where that entry sits |
+|---|---|---|
+| field menu | `"End."` | last |
+| action menu | `"Wait"` | last |
+| item sub-menu | `"Discard."` | last |
+
+The consistent model: `0x0202A5B4` is a **decode staging buffer** holding the most recently
+decoded string. Painting a menu decodes its entries top to bottom, so the bottom one is what
+remains. Moving a highlight inside the action menu re-renders no text, so nothing new lands and
+the string never changes. Item and staff LISTS appear to "track" only because moving that
+highlight redraws a description line, which is a genuine new decode.
+
+**Consequences.**
+
+1. **`menuFindEntry(pattern)` by reading labels is DEAD for the action menu.** You cannot learn
+   where the highlight is from this buffer. Seize/Visit/Talk/Trade need either the menu's own
+   index byte (which `locateMenu`/`menuGoTo` already read and verify) or the menu struct's
+   entry-ID array, which is **not yet located — this is the next thing to find.**
+2. **It does reliably name a menu's LAST entry**, which independently confirms the assumption
+   behind the wrap-to-last-entry trick: Wait really is last on the action menu, End really is
+   last on the field menu.
+3. ⚠️ **It retro-corrects a claim made earlier the same day.** A Ch.1 `fe7_act(action:'item')`
+   returned with the buffer reading `"Discard."`, and that was written up as "the retry loop
+   walked the highlight onto Discard, one press from destroying a Vulnerary." **That reading was
+   wrong.** `"Discard."` is simply the item sub-menu's bottom entry and says nothing about the
+   highlight, which was most likely still on Use — the item did get used (HP 6 -> 16). A guard
+   added to `src/fe7.ts` on the strength of it has been removed: it would have fired whenever the
+   sub-menu was open, aborting legitimate item uses, while proving nothing.
 
 ### What the cursor readout contains — Confirmed
 
