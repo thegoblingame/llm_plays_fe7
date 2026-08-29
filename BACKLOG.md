@@ -1,6 +1,6 @@
 # FE7 Backlog
 
-**Consolidated 2026-08-26.** Single ranked list of what we don't know and what we can't
+**Consolidated 2026-08-26. Substantially revised 2026-08-29** — see "Closed" at the bottom. Single ranked list of what we don't know and what we can't
 do yet, merged from `RAM.md` ("Open questions") and `attempts/HANDOFF.md` ("Known gaps in
 the tools"). Those sections remain authoritative for detail; this file is the entry point.
 
@@ -145,21 +145,35 @@ break; see RAM.md.
 
 ## P1 — worth having, not blocking
 
-### 4. Terrain array — [mem]
+### 4. `gBmMapFog` is unverified — [mem]
 
-Lower value than it sounds: the movement grid at `0x030004AC` already answers "is this a
-legal destination and what does it cost," so pathing is unblocked. Wanted for terrain
-defense/avoid bonuses once the combat forecast makes those meaningful.
+Slot 4 of the map-layer array. Named only from its position in the canonical ordering; it
+reads uniformly `0x01` on Ch.22 and Ch.7, which is consistent with "no fog" and proves
+nothing. **A fog-of-war chapter would settle it in one read.** Same for `gBmMapHidden` and
+`gBmMapOther`, both all-zero on every map seen so far.
 
-**Lever:** look for another row-pointer table shaped like the two already found — 27 rows ×
-`0x18`, table ending at its own data. Do *not* search for terrain IDs directly.
+### 5. Fold the unit-occupancy layer into `fe7_state` — [tool]
 
-### 5. True map dimensions — [mem]
+`gBmMapUnit` (slot 0) gives every live unit's deployment ID by tile in ONE read — verified
+exhaustively on Ch.22: all 55 units present, zero spurious cells. It would replace scanning
+three sparse arrays, and structurally **cannot forget the green units**, which this file and
+RAM.md both record as a whole class of past bugs.
 
-The grid buffer is 24 wide × 27 rows *including* a 2-row top border, so the real map is
-smaller. Exact width/height not yet derived. Matters for bounds-checking cursor moves.
+### 6. The rest of the contextual action menu — [tool]
 
-### 6. What else can refuse a legal destination — [mem]
+`fe7_act` now has `seize`, built on reading each menu entry's ROM command pointer. The same
+primitive should give **Visit, Door, Chest, Talk, Rescue, Drop**. Each needs exactly one
+observation of a menu containing it to learn its pointer, after which it is a constant.
+Known so far: seize `0x08B95314`, attack `0x08B95338`, item `0x08B9562C`, trade `0x08B95650`,
+wait `0x08B956BC`.
+
+### 7. Terrain content beyond Ch.22 and Ch.7 — [mem]
+
+The ID → name table is complete and Confirmed, but it was built by *writing* IDs into a tile.
+Natural occurrence is confirmed for castle terrain (Ch.22) and outdoor terrain (Ch.7). Desert,
+snow, ship and fog maps would each be a fresh check — low value, do it opportunistically.
+
+### 8. What else can refuse a legal destination — [mem]
 
 Green units accounted for every case observed, but that is not proof there is no other
 cause. Currently indistinguishable from a dropped input, which makes it expensive to
@@ -173,6 +187,26 @@ debug when it happens.
 - **Chapter / map ID** — unlocated
 - **`+0x43` vs `+0x45`** — whether they encode different things (moved vs acted?); neither
   confirmed on a *player* unit
+- **Why terrain mutates mid-chapter** — `(10,4)`/`(11,4)` on Ch.22 read Wall at Preparations
+  and Floor on turn 1. Cause Unverified. Practical consequence is already handled: don't
+  cache terrain across turns
+- **The tile-graphic map at `0x02032E90`** — 24 rows × 44 bytes, Unverified; its y-origin was
+  never established
+
+---
+
+## Closed 2026-08-29
+
+- ~~**Terrain array**~~ — **FOUND.** `gBmMapTerrain`, slot 1 of a seven-layer array at
+  `0x0202E3DC`. Layer bases are ROM literals, confirmed byte-identical on two chapters.
+  `fe7_terrain` ships. See RAM.md → "The map layers"
+- ~~**True map dimensions**~~ — **RESOLVED.** `gBmMapSize` at `0x0202E3D8` is `u16 width`
+  then `u16 height`, a direct read. Confirmed on two chapters of opposite shape
+- ~~**No seize action**~~ — **BUILT.** `fe7_act(action:'seize')` completed Lyn Ch.1
+- ~~**Combat forecast tool**~~ — **BUILT.** `fe7_forecast` ships
+- ~~**Movement grid decoded with hardcoded geometry**~~ — **FIXED.** It is derived per chapter
+  from the row-pointer table. This was chapter-blocking: it made Lyn Ch.1 unwinnable and
+  invented ~300 phantom destinations on Ch.7
 - **Remaining `0x00400000` state-flag bits at unit `+0x0C`** — bit 0 is known
   (selected/in motion); the rest are unmapped
 - **The menu allocator** — which slot a given menu lands in, and why it varies between runs

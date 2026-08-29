@@ -71,7 +71,9 @@ reverted and the next run starts fresh.
 |---|---|
 | `fe7_state` | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP. |
 | `fe7_reachable` | Where one unit can legally go, as a cost map with allies, greens and enemies marked. |
-| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit `wait` / `attack` / `staff` / `item`. |
+| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit `wait` / `attack` / `staff` / `item` / `seize`. |
+| `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
+| `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
 | `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Commits nothing. |
 | `fe7_unstick` | Why the game seems frozen and what to press. Returns a screenshot. |
 | `fe7_note` | Record something the tools could not do. |
@@ -87,6 +89,8 @@ almost always a mistake — see "when something goes wrong".
 
 ## The turn loop
 
+0. **`fe7_terrain`** once per chapter — where the gate, villages, forts and impassable
+   tiles are. You cannot plan an objective you have not located, and it is three reads.
 1. **`fe7_state`** — read the board.
 2. **Decide.** Who is in danger, who can reach what.
 3. **`fe7_forecast`** before any attack where the outcome matters — a wounded unit, a
@@ -106,6 +110,10 @@ almost always a mistake — see "when something goes wrong".
   never landed when it is only waiting on a press. The tools handle this; do not panic and
   re-issue the action.
 - **Ranged weapons exist.** Hand axes, bows and tomes attack from 2 tiles.
+- **A Gate tile does NOT mean the objective is Seize.** Lyn Ch.7 is "Defeat Heintz" and still
+  has a gate. Read the objective; do not infer it from terrain.
+- **Terrain can change mid-chapter** (a door opening, a wall breaking). Re-read `fe7_terrain`
+  if the map stops matching what you expect, rather than trusting a stale copy.
 
 ---
 
