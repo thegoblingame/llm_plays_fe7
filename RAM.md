@@ -285,6 +285,50 @@ highlight redraws a description line, which is a genuine new decode.
    added to `src/fe7.ts` on the strength of it has been removed: it would have fired whenever the
    sub-menu was open, aborting legitimate item uses, while proving nothing.
 
+### Identifying a menu entry WITHOUT pressing anything — Inferred, one observation
+
+Since the text buffer only ever names a menu's LAST entry (above), entry identity has to come
+from the menu structure itself. It can. Observed on Lyn Ch.7 HM with Lyn at `(5,4)`, adjacent to
+an enemy at `(5,5)` and to an ally at `(5,3)`, giving a genuine 4-entry action menu
+**Attack / Item / Trade / Wait**.
+
+`fe7_unstick` reported the menu at `0x02024FCD` with 4 entries. Around it:
+
+| Address | Holds |
+|---|---|
+| `0x02024FCC` | u8 **entry count** (`04`) |
+| `0x02024FCD` | u8 **current index** (`00`, highlight on Attack) — the address unstick reports |
+| `0x02024FA0` | array of u32 **pointers, one per entry, in menu order** |
+
+Each entry pointer leads to a per-entry struct of stride `0x6C`, and **`+0x30` of that struct is
+a ROM pointer that identifies the command**:
+
+| Entry | Entry struct | ROM command pointer |
+|---|---|---|
+| Attack | `0x0202547C` | `0x08B95338` |
+| Trade | `0x020253A4` | `0x08B95650` |
+| Wait | `0x02025410` | `0x08B956BC` |
+| Item | `0x02025554` | not read (ran past the end of the dump) |
+
+There is also a menu-definition pool in ROM at `0x08B95AAC`, stride `0x24`, with a text pointer
+at `+0x08` — the same neighbourhood as the per-command pointers above.
+
+**Why this matters.** It gives a read-only way to answer "which entry is this?", so a
+`menuFindEntry` can locate Seize / Visit / Talk / Trade **without pressing A on anything it
+cannot name** — which is what the "derive menu indices, do not scan" rule demands and what the
+text buffer cannot deliver.
+
+> ⚠️ **The EWRAM addresses above are per-instance and MUST NOT be hardcoded** — menus are
+> allocated dynamically and stale copies survive at old addresses looking perfectly plausible.
+> Locate the menu by behaviour (the `fe7_unstick` probe already does), then use the *offsets*.
+> The stable, reusable part is the **ROM command pointers**, which should be identical across
+> chapters and saves.
+
+**Open:** the offsets from the reported menu address to the count byte (`-1`) and to the entry
+pointer array (`-0x2D`) come from ONE menu instance. Re-derive them on a second menu with a
+different entry count before trusting them. And Seize's ROM pointer is still unknown — it needs
+one observation on a Seize map, after which it is a constant.
+
 ### What the cursor readout contains — Confirmed
 
 With the cursor free on the player phase, the text buffer at `0x0202A5B4` describes **whatever
