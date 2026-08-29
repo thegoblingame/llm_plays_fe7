@@ -41,7 +41,10 @@ Every entry is tagged with how much it can be trusted:
 | **Staff target-select proc** | **dynamic** — find by ROM script pointer `0x08B96998`; target at `+0x2C` | Confirmed |
 | **Movement range grid** — row-pointer table | `0x03000440` (IWRAM) | Confirmed |
 | Movement range grid — row data start / stride / row count | **PER CHAPTER — derive, never hardcode** | Confirmed |
-| Second map layer, purpose unknown | `0x020302D8` → `0x02030344` | Unverified |
+| **Map size — `gBmMapSize`** (`u16 width`, `u16 height`) | `0x0202E3D8` | Confirmed |
+| **Map layer pointer array** — 7 slots, `&table[2]` each | `0x0202E3DC` | Confirmed |
+| **Terrain map — `gBmMapTerrain`** (pointer slot) | `0x0202E3E0` | Confirmed |
+| **Unit occupancy map — `gBmMapUnit`** (pointer slot) | `0x0202E3DC` | Confirmed |
 
 Unit structs are **72 bytes (`0x48`)** and packed contiguously.
 
@@ -498,8 +501,10 @@ Res 7, holding item `0x4B`) had been guessed to be a healer, and Priscilla is on
 
 **Practical consequence:** terrain can be queried by name, one read per tile, with no screenshot
 and no need to locate the numeric tile array. To survey terrain, walk the cursor and read this
-string. (A numeric terrain ID and the underlying map array are still unlocated — but for
-pathing purposes this may be sufficient, and it is far easier to interpret.)
+string. (**Superseded 2026-08-29** as the primary terrain source: the numeric terrain array
+is now located at `0x0202E3E0` — see "The map layers". One read gets the whole board with no
+cursor walk. This buffer remains the right tool for *naming* a tile and for identifying which
+unit occupies it, and it was one of the oracles used to confirm the array.)
 
 **It reads unit names too, which makes it a general "what is on this tile?" probe.** With the
 cursor over Hector it returned `"Hector"`; over an empty wall tile, `"Wall"`. Two uses proven in
@@ -734,6 +739,10 @@ The maximum value present is ≤ the unit's Move.
 > tile that reads reachable-and-unoccupied and is then silently refused; see the green-array
 > section. Even with all three checked, a refusal can still happen for reasons not yet mapped,
 > so treat a failed move as informative rather than impossible.
+>
+> **Better, since 2026-08-29: use the unit occupancy map at `0x0202E3DC` instead.** One read
+> per tile answers "occupied, and by whom" for all three factions at once, with no array
+> scan and no way to forget the green units. See "The map layers".
 
 Terrain cost is also visible in the grid, so don't assume Manhattan. Legault's row `y=6` read
 `6 5 4 5 6` at cols 9–13 while plain Manhattan from `(10,3)` would give `3 4 3 4 5` — the direct
@@ -786,32 +795,219 @@ only ever overwritten by the next selection.
 > while nothing is selected returns a stale, entirely plausible-looking map for whichever unit
 > was picked up last — a silent wrong answer, not an obvious one.
 
-### A second map layer exists — EWRAM `0x020302D8` (purpose unknown)
+### The map layers — SOLVED 2026-08-29. Seven of them, all statically addressed
 
-Identical geometry to the movement grid, and **sized per chapter the same way**: Ch.7 reads 18
-pointers at stride `0x16` with data at `0x02030320`; Ch.22 read 27 pointers at stride `0x18`
-with data at `0x02030344`. As always, `table + 4 * count == first pointer`.
+**This supersedes the old "a second map layer exists, purpose unknown" note.** The movement
+grid is one of **seven** identically-shaped map layers, and the game keeps a pointer to each
+in a fixed 7-entry array. Terrain is layer 2.
 
-> **The `0x02030344` in the original write-up is Ch.22's data start, not a constant.** It was
-> computed as `0x020302D8 + 27*4` — the same hardcoded 27 that broke the movement grid decode.
-> Dereference the table.
+#### The pointer array — `0x0202E3DC` — Confirmed
 
-**Contents are all zeros — re-confirmed 2026-08-28 on Ch.7 at the CORRECT data address**
-(`0x02030320`, 396 bytes), on the player phase with no unit selected. The original "not terrain"
-call was right, and it survived being made from the wrong address. Candidates remain:
-attack-range overlay, fog, or unit occupancy — all of which would legitimately be empty here.
+| Slot | GBAFE name | Points into | Contents on Ch.22 |
+|---|---|---|---|
+| `0x0202E3DC` | `gBmMapUnit` | table `0x0202E3F8` | **unit occupancy** — Confirmed |
+| `0x0202E3E0` | `gBmMapTerrain` | table `0x0202EBB0` | **terrain IDs** — Confirmed |
+| `0x0202E3E4` | `gBmMapMovement` | table `0x03000440` | movement cost — Confirmed (the grid documented above) |
+| `0x0202E3E8` | `gBmMapRange` | table `0x03000BF8` | selected unit's attack-range overlay — Unverified |
+| `0x0202E3EC` | `gBmMapFog` | table `0x0202F368` | uniformly `0x01` — Inferred (no fog on this map) |
+| `0x0202E3F0` | `gBmMapHidden` | table `0x0202FB20` | all zeros — Unverified |
+| `0x0202E3F4` | `gBmMapOther` | table `0x020302D8` | all zeros — Unverified (this is the old "second layer") |
 
-Its table pointer is stored at `0x03000438`, immediately *before* the movement grid's table.
-**That is NOT a rich catalogue** — checked 2026-08-28: `0x03000400`–`0x03000437` is entirely
-zeros, `0x0300043C` is zero, and `0x03000440` onward is the movement grid's own table inline.
-One layer slot, not a directory.
+The names come from the canonical GBAFE ordering. The first **three** are content-verified,
+which is what makes the ordering itself trustworthy; the last three are named by position only.
 
-**Negative results on the cheap adjacency probes** (2026-08-28, Ch.7) — do not repeat these:
-the 256 bytes after this layer's data (`0x020304AC`) and the 128 bytes after the movement grid's
-data (`0x03000614`) are both entirely zeros. No third map-shaped layer sits next to either one.
-The terrain array needs a real sweep of IWRAM and EWRAM for the table SHAPE — 4-byte-aligned
-pointers, evenly spaced, where the first pointer equals `table + 4 * count`. That property is
-self-validating and should produce very few false positives.
+Each slot holds `table + 8`, i.e. `&table[2]` — **the `+2` border row offset is already baked
+in**, so you never touch it:
+
+```
+width   = read16(0x0202E3D8)          # gBmMapSize.width
+height  = read16(0x0202E3DA)          # gBmMapSize.height
+tile(layer, x, y) = read8( read32( read32(layer_slot) + 4*y ) + x )
+```
+
+Note the **double** indirection: dereference the slot to get the row-pointer array, *then*
+index it. Reading `read32(slot + 4*y)` instead walks the pointer array itself and returns a
+grid shifted by 9 rows — a plausible-looking wrong answer, and the one bug this cost.
+
+#### Why these addresses are safe to hardcode — Confirmed
+
+Unlike the row count and stride, the table bases are **ROM literals**, sitting together in the
+map-init function's literal pool. Read straight out of the ROM file:
+
+```
+0x08018E44: 0x0202E3F8  unit table       0x08018E48: 0x0202E3DC  &gBmMapUnit
+0x08018E4C: 0x0202E3D8  &gBmMapSize
+0x08018E50: 0x0202EBB0  terrain table    0x08018E54: 0x0202E3E0  &gBmMapTerrain
+0x08018E58: 0x03000440  movement table   0x08018E5C: 0x0202E3E4  &gBmMapMovement
+0x08018E60: 0x03000BF8  range table      0x08018E64: 0x0202E3E8  &gBmMapRange
+0x08018E68: 0x0202F368  fog table        0x08018E6C: 0x0202E3EC  &gBmMapFog
+0x08018E70: 0x0202FB20  hidden table     0x08018E74: 0x0202E3F0  &gBmMapHidden
+0x08018E78: 0x020302D8  other table      0x08018E7C: 0x0202E3F4  &gBmMapOther
+```
+
+They are compile-time constants, so they cannot vary per chapter — which is a stronger
+guarantee than any two-map sample. **What still varies per chapter is the geometry**, and the
+recipe above never uses it. The five EWRAM tables are spaced a fixed `0x7B8` apart.
+
+> **Provenance.** The *addresses*, the *pointer-array convention* and *`gBmMapSize`* are
+> **Confirmed on two maps**: Ch.22 "Kinship's Bond" Hector HM (22 × 23) and Lyn Ch.7
+> "Siblings Abroad" (20 × 14), plus the ROM literal pool. They also survived a hard reset
+> and a save-file reload.
+>
+> The *terrain-content* verification — the ten oracle-checked tiles, the causal write test,
+> the ID → name sweep — is **Ch.22 only**. Ch.7's terrain array decodes as a coherent
+> outdoor map in the same encoding (a contiguous `0x11`/`0x12` mountain range, `0x10` River
+> with `0x13` Bridge tiles sitting inside it at (17,4), (13,5), (11,9), (13,12), `0x0A`
+> Fort ×4, `0x05` House, `0x07` Vendor, `0x26` Cliff on a diagonal, and `0x03` Village at
+> (17,2) on a chapter known to have a village).
+>
+> **Upgraded to Confirmed on Ch.7, 2026-08-29.** Five tiles oracle-checked against
+> `fe7_inspect`, five distinct terrain types, none of which occurs in Ch.22's castle set:
+> `(0,0)` `0x11`→"Mntn", `(2,3)` `0x0C`→"Forest", `(7,4)` `0x0A`→"Fort", `(10,4)` `0x10`→
+> "River.", `(17,2)` `0x03`→"Village." — 5/5. So the encoding is now confirmed on two
+> chapters and on outdoor terrain, not just castle interior.
+>
+> A sixth check demonstrates the layer's advantage over the cursor: the array reads `0x23`
+> **Gate** at `(7,10)` while `fe7_inspect` there returns `"Heintz"`, the boss standing on it.
+> **The terrain layer sees through units; the cursor readout cannot.** Note also that this is
+> a "Defeat Heintz" chapter that still has a gate, so a Gate tile does NOT imply a Seize
+> objective — read the objective separately.
+
+#### Map dimensions are now a direct read — Confirmed on two maps
+
+`gBmMapSize` at `0x0202E3D8` is `u16 width` then `u16 height`. This upgrades the old
+**Inferred** dimension formulas to a **Confirmed** single read — keep the formulas as a
+cross-check, prefer the read.
+
+**Field order verified on two maps with opposite aspect ratios**, which is what makes it
+safe. Ch.22 is taller than wide, Ch.7 is wider than tall; a swapped decode would have been
+obvious on at least one of them:
+
+| Chapter | bytes at `0x0202E3D8` | width | height | terrain table `stride-2` / `rows-4` | movement table |
+|---|---|---|---|---|---|
+| Ch.22 "Kinship's Bond" HM | `16 00 17 00` | 22 | 23 | 22 / 23 | 27 rows, stride 24 |
+| Lyn Ch.7 "Siblings Abroad" | `14 00 0E 00` | 20 | 14 | 20 / 14 | 18 rows, stride 22 |
+
+Both agree exactly with the movement-grid derivation and with this file's previously
+recorded Ch.7 geometry. The bounds are also exactly right in both directions on Ch.7: the
+two pad bytes ending each row are `00 00`, and row `y = height` — the first row past the
+map — is entirely zero. Indexing with `gBmMapSize` reads all the real data and none of the
+padding.
+
+> **The pointer array is byte-identical on both chapters** (`0x0202E400`, `0x0202EBB8`,
+> `0x03000448`, `0x03000C00`, `0x0202F370`, `0x0202FB28`, `0x020302E0`). Expected, since
+> each slot is `&table[2]` — an offset of two *pointers*, independent of map size — but it
+> means the static-base claim is now confirmed live on two differently-sized maps, not only
+> from the ROM literal pool.
+
+#### Terrain map — `0x0202E3E0` — Confirmed
+
+Values are standard GBAFE terrain IDs, one byte per tile, valid range **`0x00`–`0x40`**.
+Verification on Ch.22, four independent ways:
+
+1. **Ten tiles, ten distinct terrain values, all matching `fe7_inspect`'s cursor readout**:
+   `(18,0)=0x01 "Plain."`, `(0,8)=0x0C "Forest"`, `(12,2)=0x17 "Floor."`,
+   `(12,3)=0x1A "Wall"`, `(15,11)=0x1B "Wall"`, `(13,7)=0x1D "Pillar"`,
+   `(17,9)=0x1E "Door"`, `(4,17)=0x21 "Chest."`, `(11,5)=0x2D "Stairs"`,
+   `(9,4)=0x3F "Brace."`.
+2. **Against this file's own combat-forecast readings on the same chapter.** The forecast
+   section records terrain `29` at `(8,7)` and terrain `23` at `(9,6)` and `(11,6)`; the
+   array reads `0x1D`, `0x17`, `0x17` there. Two sessions, two unrelated mechanisms.
+3. **Against `fe7_reachable`.** Every Wall (`0x1A`/`0x1B`) and Brace (`0x3F`) tile in range
+   is `0xFF`; Floor / Plain / Stairs all cost 1 per step.
+4. **Causally — write to it and the game obeys.** The decisive test:
+
+```
+write8(terrain(12,2), 0x0C)   # Forest onto a Floor tile
+write8(terrain(11,3), 0x1A)   # Wall onto Hector's only route south
+```
+> then `fe7_inspect` reads `"Forest"` / `"Wall"`, `fe7_reachable(slot 0)` shows (12,2) go
+> **cost 1 → 2**, (11,3) go **cost 2 → unreachable**, and (11,5) go **3 → 5** as the path
+> detours. Restore with a state load. This proves it is the live array the pathfinder reads,
+> not a render cache.
+
+**The terrain array is mutable during a chapter — Unverified.** On Ch.22, `(10,4)` and
+`(11,4)` read `0x1A` (Wall) at the Preparations screen and `0x17` (Floor) on turn 1, with
+the rest of the grid identical. Something in the opening event opens that gap. Do not cache
+the terrain map across turns.
+
+#### Terrain ID → name — the complete table, Confirmed
+
+Read out of the game by writing each ID into an empty tile and reading the cursor readout at
+`0x0202A5B4`. Strings are verbatim, including the trailing separator dot the readout carries.
+
+| ID | Name | ID | Name | ID | Name | ID | Name |
+|---|---|---|---|---|---|---|---|
+| `0x00` | `..` (none) | `0x11` | Mntn | `0x22` | Roof | `0x33` | Snag |
+| `0x01` | Plain | `0x12` | Peak | `0x23` | Gate | `0x34` | Bridge |
+| `0x02` | Road | `0x13` | Bridge | `0x24` | Church | `0x35` | Sky |
+| `0x03` | Village | `0x14` | Bridge | `0x25` | Ruins | `0x36` | Deeps |
+| `0x04` | Village | `0x15` | Sea | `0x26` | Cliff | `0x37` | Ruins |
+| `0x05` | House | `0x16` | Lake | `0x27` | Ballista | `0x38` | Inn |
+| `0x06` | Armory | `0x17` | **Floor** | `0x28` | Long B | `0x39` | Barrel |
+| `0x07` | Vendor | `0x18` | Floor | `0x29` | Killer B | `0x3A` | Bone |
+| `0x08` | Arena | `0x19` | Fence | `0x2A` | Flat | `0x3B` | Dark |
+| `0x09` | C.Room | `0x1A` | **Wall** | `0x2B` | Wreck | `0x3C` | Water |
+| `0x0A` | Fort | `0x1B` | Wall | `0x2C` | `..` (none) | `0x3D` | Gunnel |
+| `0x0B` | Gate | `0x1C` | Rubble | `0x2D` | Stairs | `0x3E` | Deck |
+| `0x0C` | **Forest** | `0x1D` | **Pillar** | `0x2E` | `..` (none) | `0x3F` | Brace |
+| `0x0D` | Thicket | `0x1E` | Door | `0x2F` | Glacier | `0x40` | Mast |
+| `0x0E` | Sand | `0x1F` | Throne | `0x30` | Arena | | |
+| `0x0F` | Desert | `0x20` | Chest | `0x31` | Valley | | |
+| `0x10` | River | `0x21` | Chest | `0x32` | Fence | | |
+
+> **`0x41` and above are out of range.** `0x41` yields an empty string; `0x42` and beyond
+> return garbage, hang the cursor readout, or **crash the game outright** (unit arrays fill
+> with `cls-1` / HP 8/183 / coords (28,215), `gBmMapSize` reads `27649 x 18464`). If you
+> write terrain IDs, clamp to `0x00`–`0x40` and save a state first.
+
+#### Unit occupancy map — `0x0202E3DC` — Confirmed
+
+`tile(x,y)` holds the **deployment ID** of the unit standing there, i.e. the unit struct's
+`+0x0B` field: `0x01+` player, `0x41+` green, `0x81+` enemy, `0x00` empty.
+
+Exhaustively cross-checked on Ch.22 turn 1: all **55** live units across the three arrays
+appear at their own coordinates with a value equal to their `+0x0B`, and **zero** nonzero
+cells have no live unit behind them. That makes it a strictly better occupancy test than
+scanning three sparse arrays by coordinate — one read answers "is this tile occupied, and by
+whom", including the green units that have silently broken moves before.
+
+#### Range overlay — `0x0202E3E8` — Unverified
+
+Populated when a unit is selected, with counts (1–7) over the tiles that unit can attack or
+staff — the red/blue tile display. Selecting slot 10 (a staff user at `(9,6)`, Move 5)
+produced a diamond of radius 6 centred on it. **Not cleared on deselect**, the same trap the
+movement grid has. Whether the value is genuinely "number of covering attack positions" is
+not established.
+
+#### Tile-graphic map — `0x02032E90` — Unverified
+
+Also a row-pointer table, but **24 rows of 44 bytes = 22 `u16` per row** — one 16-bit tile
+graphic index per tile, not a terrain byte. Its base is likewise a ROM literal
+(`0x08B932B4`). Row/column origin not established; do not assume the same `+2` convention.
+
+#### Negative results — do not repeat
+
+- `0x0202FB20` and `0x020302D8` are all zeros on Ch.22 turn 1; `0x020302D8` was already all
+  zeros on Ch.7. `0x0202F368` is uniformly `0x01`. None of the three is terrain.
+- `0x03000438` still holds a copy of `0x020302D8`, and `0x03000400`–`0x03000437` is still
+  zeros. That IWRAM slot is a stale single cache, not the catalogue — the catalogue is
+  `0x0202E3DC`.
+- Searching the ROM for a flat `[terrainId] -> avoid` or `-> def` byte table **failed**.
+  Filters keyed on `tbl[0x0C]==20 && tbl[0x1D]==20 && tbl[0x17]==0` (avoid) returned zero
+  hits; the Def variant returned two, neither plausible. Either FE7 does not store these as
+  flat per-ID arrays or the assumed bonus values are wrong. Read the bonuses from
+  `BattleUnit +0x56/+0x57` instead.
+
+#### How to re-find all of this in one minute
+
+```
+read32(0x0202E3DC .. 0x0202E3F4)   -> the 7 layer pointers
+read16(0x0202E3D8), read16(0x0202E3DA) -> 22, 23 on Ch.22
+p = read32(0x0202E3E0)             -> 0x0202EBB8 on Ch.22
+read8(read32(p + 4*2) + 12)        -> 0x17 at (12,2), and fe7_inspect says "Floor."
+read8(read32(p + 4*3) + 12)        -> 0x1A at (12,3), and fe7_inspect says "Wall"
+```
 
 ### How it was found — noise cancellation
 
@@ -1462,9 +1658,12 @@ The enemy mage at `(8,7)` carried terrain ID `29` with `terrainDef = 1`, `terrai
 at `+0x56` / `+0x57`, and its DEF and AVO were exactly base `+1` and `+20`. Terrain ID `23`
 (the tiles at `(9,6)` and `(11,6)`) gives `0` / `0`.
 
-This makes `+0x55` a **second, independent read of the terrain ID** for two tiles at once —
-useful given that the terrain array itself is still unlocated. The mapping ID → name is
-*not* established; `29` is a forest only by inference from its bonuses.
+This makes `+0x55` a **second, independent read of the terrain ID** for two tiles at once.
+
+> **Both readings were re-confirmed against the terrain array on 2026-08-29** (same chapter):
+> `(8,7)` is `0x1D` and `(9,6)` / `(11,6)` are `0x17`. And the ID → name table is now fully
+> enumerated — `29` = `0x1D` is a **Pillar**, not a forest. The guess from bonuses alone was
+> wrong; see "The map layers → Terrain ID → name".
 
 ### Weapon triangle — Confirmed, including reaver weapons
 
@@ -1775,14 +1974,17 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 
 - Gold
 - Chapter / map ID
-- **Terrain / map tile array** — still unlocated, but no longer blocks pathing: the movement
-  range grid answers "is this a legal destination, and what does it cost" directly. Best lever
-  now is to look for another row-pointer table with the same *shape* as the movement grid's —
-  4-byte row pointers, one per row, the table ending exactly where its own data begins — rather
-  than searching for terrain IDs. Match the **shape only, never a row count or stride**: both
-  are sized to the map and differ per chapter (see Movement range)
-- ~~**True map dimensions**~~ — **RESOLVED 2026-08-28: they fall out of the movement grid's
-  row-pointer table.** width = `stride - 2`, height = `row_count - 4` (borders are asymmetric —
+- ~~**Terrain / map tile array**~~ — **RESOLVED 2026-08-29: `0x0202E3E0`**, one of seven
+  statically-addressed map layers catalogued at `0x0202E3DC`. Found exactly by the suggested
+  method — a shape sweep of IWRAM + EWRAM for evenly-spaced row-pointer tables — which
+  returned 8 hits and no noise. See "The map layers". Follow-ups that are now cheap and still
+  open: what `gBmMapHidden` / `gBmMapOther` are for (both all-zero here), confirming
+  `gBmMapFog` on an actual fog-of-war chapter, and what event mutates the terrain array
+  between Preparations and turn 1
+- ~~**True map dimensions**~~ — **RESOLVED TWICE. 2026-08-29: read them directly from
+  `gBmMapSize` at `0x0202E3D8` (`u16 width`, `u16 height`) — Confirmed, and it agrees exactly
+  with the older derivation below, which is now a cross-check rather than the source.**
+  2026-08-28: they fall out of the movement grid's row-pointer table. width = `stride - 2`, height = `row_count - 4` (borders are asymmetric —
   2 leading rows AND 2 trailing, but no leading column). Ch.1 = 15×10, Ch.7 = 20×14,
   Ch.22 = 22×23 by formula. Both Inferred; the raw stride and row count are Confirmed. See
   Movement range for the evidence and for why indexing must not use these
@@ -1801,9 +2003,11 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   Raven missed every swing and his Hand Axe stayed at 20/20 uses, while Hector landed one
   of two swings and spent exactly 1. This contradicts the usual understanding of FE7 and
   rests on 2 observations; treat as **Inferred** and re-test
-- **Terrain ID → name mapping.** `+0x55` of each `BattleUnit` gives a numeric terrain ID
-  (`23` plain, `29` gives +1 Def / +20 Avo) — pair it with the name from `0x0202A5B4` under
-  the cursor to build the table cheaply
+- ~~**Terrain ID → name mapping**~~ — **RESOLVED 2026-08-29, all 65 entries `0x00`–`0x40`.**
+  See "The map layers → Terrain ID → name". Note the correction: `29` is **Pillar**, not
+  forest. What is still missing is the numeric **terrain bonus** table (avoid / def / res /
+  heal) as a lookup — a ROM search for it failed, so read the bonuses per-tile from
+  `BattleUnit +0x56/+0x57`
 - Whether `+0x43` vs `+0x45` encode different things (moved vs acted?), and confirming either
   on a *player* unit
 - Purpose of the second `"Mark"` copy at `0x02020160`
@@ -1831,6 +2035,29 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 ---
 
 ## Method notes
+
+- **Dump all of RAM to disk in one call and analyse it locally.** `bridge.lua` drains its
+  whole request buffer every frame, so `read_range` calls can be **pipelined**. A Node script
+  that fires 8 + 64 of them with `Promise.all` dumps IWRAM (32 KiB) *and* EWRAM (256 KiB) in
+  **0.2 s wall-clock** — against ~15 minutes doing it one MCP call at a time. This is what
+  made the map-layer sweep practical, and it should be the default opening move for any
+  structural hunt: dump, then grep/scan the files with ordinary tooling.
+
+  ```js
+  import { MgbaClient } from "~/Desktop/repos/mcp-mgba/dist/mgba.js";
+  const m = new MgbaClient("127.0.0.1", 8765);
+  const proms = [];
+  for (let off = 0; off < 0x40000; off += 4096)
+    proms.push(m.call("read_range", { address: 0x02000000 + off, length: 4096 }));
+  const ewram = Buffer.concat((await Promise.all(proms)).map(Buffer.from));
+  ```
+
+- **Search the ROM as a file, not through the emulator.** `Fire Emblem (USA, Australia).gba`
+  is on disk. Scanning it for a 32-bit literal instantly answers "is this RAM address a
+  compile-time global or a runtime allocation?" — which is exactly the question that decides
+  whether an address is safe to hardcode across chapters. The seven map-layer bases were all
+  found sitting together in one literal pool this way, which settled their per-chapter
+  stability more convincingly than a second map would have.
 
 - **Search and diff run inside the emulator now.** The forked `mcp-mgba`
   (`~/Desktop/repos/mcp-mgba`, branch `feat/memory-search-and-input-sequence`) adds
