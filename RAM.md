@@ -224,6 +224,24 @@ walks the cursor, and the `A` behind it then lands on the board, where empty gro
 So the press is verified rather than blind: press `Up`, re-read the cursor, and only send `A`
 if the cursor held.
 
+### What the cursor readout contains — Confirmed
+
+With the cursor free on the player phase, the text buffer at `0x0202A5B4` describes **whatever
+is under the cursor**, and that is not always terrain. Observed on Lyn Ch.7:
+
+| Cursor on | Buffer reads |
+|---|---|
+| empty plain | `"Plain."` |
+| empty mountain | `"Mntn"` |
+| a player unit | `"Lyn."` — the unit's NAME |
+| an enemy unit | `"Black Fang"` — the faction |
+
+So **terrain is only readable on EMPTY tiles**; a unit standing there masks it. This is what
+`fe7_inspect` exposes, and why that tool returns the string verbatim instead of calling it a
+terrain name. Note the buffer also carries objective text (`"Seize gate"`) and menu
+descriptions, so the same read means different things in different states — always pair it with
+the cursor position and the phase.
+
 > **Caveat — the map edge gives a false "menu open".** At `y = 0`, `Up` is blocked by the
 > boundary and the cursor holds still with no menu present, exactly as if one were open. The
 > same applies to any direction pressed into an edge. Treat a non-moving cursor as
@@ -541,11 +559,28 @@ the table, so **one `read_range` starting at `0x03000440` fetches the table and 
 together** (756 bytes even on Ch.22, well under the 4096 cap) — the correct implementation
 costs exactly the same one round trip the broken hardcoded one did.
 
-`stride` is **2 wider than the playable map width** — Inferred, but consistent on both maps
-where it can be checked: Ch.1 stride 17 against a cursor that stops at `x = 14` (width 15),
-Ch.7 stride 22 against an enemy standing at `x = 18` (width 20, so ≥ 19 required). The two
-trailing columns read `0xFF`. **Map dimensions therefore fall out of this table for free**:
-width = `stride - 2`, addressable height = `row_count - 2`.
+**Map dimensions fall out of this table** — but the borders are NOT symmetric, and getting
+this wrong costs legal moves:
+
+```
+playable width  = stride    - 2      # 2 trailing columns, no leading column
+playable height = row_count - 4      # 2 LEADING rows (the y+2 offset) AND 2 trailing
+```
+
+| Chapter | stride / rows | Playable | Evidence |
+|---|---|---|---|
+| Lyn Ch.1 | 17 / 14 | 15 × 10 | cursor stops at `x = 14`; rows y=10,11 read `0xFF` in every grid decoded |
+| Lyn Ch.7 | 22 / 18 | 20 × 14 | cursor stops at `x = 19` and at `y = 13`, confirmed from two separate columns |
+| Ch.22 | 24 / 27 | 22 × 23 | formula only — not measured |
+
+Both are **Inferred**. An earlier revision of this section said height = `row_count - 2`, which
+is wrong: it was written from the top-border offset alone, before the bottom edge was probed.
+
+> **Never bound array indexing by these.** Index with the RAW `row_count - 2` and `stride`
+> straight off the table, and use the playable size only for reporting and for choosing a tile
+> to stand on. A too-tight inference silently turns reachable tiles into `0xFF`, which is the
+> Ch.1 chapter-ending bug reintroduced from the other direction. `src/fe7.ts` keeps them as
+> separate fields (`indexRows`/`stride` vs `height`/`width`) for exactly this reason.
 
 ### Indexing — `col = x`, `row = y + 2`
 
@@ -632,14 +667,30 @@ only ever overwritten by the next selection.
 
 ### A second map layer exists — EWRAM `0x020302D8` (purpose unknown)
 
-Identical geometry: 27 pointers, stride `0x18`, table ending exactly at its data start
-`0x02030344`, 648 bytes. Read **all zeros** while a unit was selected, so it is not terrain and
-not the movement grid. Candidates: attack-range overlay, fog, or unit occupancy.
+Identical geometry to the movement grid, and **sized per chapter the same way**: Ch.7 reads 18
+pointers at stride `0x16` with data at `0x02030320`; Ch.22 read 27 pointers at stride `0x18`
+with data at `0x02030344`. As always, `table + 4 * count == first pointer`.
 
-Its table pointer is stored at `0x03000438`, immediately *before* the movement grid's table —
-so the map layers are catalogued together and **more layers are likely reachable the same way**.
-That is the obvious lever for the still-missing terrain array: look for another table of this
-shape rather than searching for terrain IDs directly.
+> **The `0x02030344` in the original write-up is Ch.22's data start, not a constant.** It was
+> computed as `0x020302D8 + 27*4` — the same hardcoded 27 that broke the movement grid decode.
+> Dereference the table.
+
+**Contents are all zeros — re-confirmed 2026-08-28 on Ch.7 at the CORRECT data address**
+(`0x02030320`, 396 bytes), on the player phase with no unit selected. The original "not terrain"
+call was right, and it survived being made from the wrong address. Candidates remain:
+attack-range overlay, fog, or unit occupancy — all of which would legitimately be empty here.
+
+Its table pointer is stored at `0x03000438`, immediately *before* the movement grid's table.
+**That is NOT a rich catalogue** — checked 2026-08-28: `0x03000400`–`0x03000437` is entirely
+zeros, `0x0300043C` is zero, and `0x03000440` onward is the movement grid's own table inline.
+One layer slot, not a directory.
+
+**Negative results on the cheap adjacency probes** (2026-08-28, Ch.7) — do not repeat these:
+the 256 bytes after this layer's data (`0x020304AC`) and the 128 bytes after the movement grid's
+data (`0x03000614`) are both entirely zeros. No third map-shaped layer sits next to either one.
+The terrain array needs a real sweep of IWRAM and EWRAM for the table SHAPE — 4-byte-aligned
+pointers, evenly spaced, where the first pointer equals `table + 4 * count`. That property is
+self-validating and should produce very few false positives.
 
 ### How it was found — noise cancellation
 
@@ -1610,10 +1661,10 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   than searching for terrain IDs. Match the **shape only, never a row count or stride**: both
   are sized to the map and differ per chapter (see Movement range)
 - ~~**True map dimensions**~~ — **RESOLVED 2026-08-28: they fall out of the movement grid's
-  row-pointer table.** width = `stride - 2`, addressable height = `row_count - 2`, both derived
-  per map by the recipe in the Movement range section. Ch.1 = 15×12, Ch.7 = 20×16,
-  Ch.22 = 22×25. The `- 2` on width is Inferred (the trailing columns read `0xFF`); the row
-  count is Confirmed
+  row-pointer table.** width = `stride - 2`, height = `row_count - 4` (borders are asymmetric —
+  2 leading rows AND 2 trailing, but no leading column). Ch.1 = 15×10, Ch.7 = 20×14,
+  Ch.22 = 22×23 by formula. Both Inferred; the raw stride and row count are Confirmed. See
+  Movement range for the evidence and for why indexing must not use these
 - ~~**Derived combat stats** (Atk / Crit / Hit / Avoid)~~ — **RESOLVED: the `BattleUnit`
   pair at `0x0203A3F0` / `0x0203A470`.** See the Combat forecast section. Three follow-ups
   remain open:
