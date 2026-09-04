@@ -31,6 +31,7 @@ One more piece lives outside both — the `memory-investigator` subagent definit
 
 | File | What it is for |
 |---|---|
+| `SETUP.md` | Bare clone → a session that can play. Prerequisites, the build, MCP registration, loading the bridge. Only needed on a new machine. |
 | `BACKLOG.md` | **Start here after this file.** The ranked list of what we cannot do yet, split into memory work and tool work. |
 | `RAM.md` | The canonical memory map — addresses, struct layouts, formulas, and the method notes. ~1600 lines. Every claim is tagged Confirmed / Inferred / Unverified. |
 | `attempts/` | Working logs, one per investigation. Historical; the conclusions have been folded into `RAM.md`. |
@@ -42,7 +43,8 @@ One more piece lives outside both — the `memory-investigator` subagent definit
 
 ## How to actually run anything
 
-Three things have to be true, and the second is the one people forget:
+Three things have to be true, and the second is the one people forget. If none of them are
+true yet — a fresh machine, a fresh clone — start from `SETUP.md` instead.
 
 1. **mGBA is running the ROM**, with `mcp-mgba/lua/bridge.lua` loaded via Tools > Scripting.
    The bridge listens on `127.0.0.1:8765`.
