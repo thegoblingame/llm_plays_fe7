@@ -71,19 +71,78 @@ reverted and the next run starts fresh.
 |---|---|
 | `fe7_state` | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP. |
 | `fe7_reachable` | Where one unit can legally go, as a cost map with allies, greens and enemies marked. |
-| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit `wait` / `attack` / `staff` / `item` / `seize`. |
+| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit `wait` / `attack` / `staff` / `item` / `seize`. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
 | `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
 | `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
 | `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Commits nothing. |
 | `fe7_unstick` | Why the game seems frozen and what to press. Returns a screenshot. |
 | `fe7_note` | Record something the tools could not do. |
 | `fe7_end_turn` | End the player phase. Returns quickly. |
-| `fe7_wait` | Wait out the enemy phase in resumable chunks. Call repeatedly until it says the player phase is back. |
+| `fe7_wait` | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. |
 
 Raw `mgba_*` tools exist, but **prefer the `fe7_*` tools every time**. The raw ones take
 absolute hex addresses and blind button presses; the `fe7_*` ones take tile coordinates and
 slot numbers and verify every step against memory. Dropping to raw presses mid-run is
 almost always a mistake — see "when something goes wrong".
+
+### The 27 actions — what is known, and what still is not
+
+The game offers **27 unit actions**. `fe7_act` implements five: `wait`, `attack`, `staff`,
+`item`, `seize`. All 27 are catalogued in `RAM.md`; you do not need it to play.
+
+**What changed:** the other 22 are no longer *unidentifiable*. Every command has a stable ROM
+pointer, and the tool layer reads a live menu and names each entry, so "what can this unit do
+on this tile" now has an exact answer instead of a guess. Selecting any of the 27 is a solved
+problem — the layer can find an entry, confirm it by pointer and move the highlight onto it
+without ever pressing `A` on something it cannot name.
+
+**What is still missing is everything after that `A`.** Each action opens its own screen, and
+each needs a memory signal that proves it landed. That is the work, not the identification.
+
+#### Seeing what a unit is actually offered
+
+`fe7_act(slot, x, y, action: 'seize')` doubles as a **menu probe**. Where Seize is not on the
+menu it names every entry and presses nothing:
+
+```
+No Seize entry on unit #0's action menu at (11,2) — the menu holds
+[attack, rescue, item, trade*, wait]. Nothing was pressed; unit unspent at (11,2).
+```
+
+A trailing `*` marks an action that does **not** consume the unit's turn. Reach for this
+whenever you want to know what a tile really offers, then write a note that names the command
+exactly — "the game offered Rescue here and I could not invoke it" is worth far more than "I
+wish I could rescue".
+
+> ⚠️ **Do not probe with it where Seize would genuinely be offered** — a lord standing on a
+> gate or throne. There it does not just look: it moves the highlight onto Seize and presses
+> `A`, which commits, and on a Seize chapter that ends the chapter.
+
+#### How far each of the 22 actually is
+
+| Tier | Actions | What is missing |
+|---|---|---|
+| **Shallow** — press `A` and it happens | Visit, Door, Chest, Ride, Dismount, Status | Only a confirm-by-effect signal: which memory field proves it worked |
+| **Medium** — opens a unit target selection | Rescue, Drop, Take, Give, Talk, Dance, Play, Support | The target-cycling machinery exists but is proven only on the staff and attack paths; plus the same confirm signal |
+| **Deep** — a whole new screen to drive | Trade, Supply/convoy, Armory, Vendor, Secret Shop, Arena, Steal | The entire flow. Trade is written but unregistered because its partner-select never matched expectations |
+
+#### What actually goes wrong if you try one
+
+- **You cannot invoke them.** `fe7_act`'s `action` takes only the five. The probe tells you
+  what is there; it does not let you do it. Record and move on.
+- **Reaching a screen is not completing it.** Everything except `Wait` backs out with `B`, so
+  landing on Rescue's target select by accident is recoverable — but getting there is the easy
+  half.
+- **Confirming is the real gap.** For most of the 22 nothing is known about which memory
+  changes prove success. That matters more than it sounds: an action can work perfectly and
+  the tool still report that nothing happened, which is the worst failure shape available
+  because it invites doing it twice.
+- **A menu entry is not a guarantee.** The game offering Rescue means Con and Aid allow it;
+  it says nothing about whether your intended target is in range.
+
+**When a menu offers something you cannot invoke, that is a known gap, not a mistake on your
+part.** Record it with `fe7_note` *as it comes up in play*, naming the unit, the tile, the
+command and what you did instead. Do not go hunting through all 22.
 
 ---
 
@@ -96,9 +155,23 @@ almost always a mistake — see "when something goes wrong".
 3. **`fe7_forecast`** before any attack where the outcome matters — a wounded unit, a
    possible kill, or a choice between targets. It costs one call and commits nothing.
 4. **`fe7_act`** per unit. Pass `target_slot` so the target is verified rather than guessed.
-5. **`fe7_end_turn`**, then **`fe7_wait`** repeatedly until the player phase returns. A full
-   enemy phase takes about four minutes. That is normal and is the floor — battle animations
-   are already off. Do not try to speed it up.
+5. **`fe7_end_turn`**, then **`fe7_wait`** until the player phase returns. A full enemy phase
+   takes about four minutes. That is normal and is the floor — battle animations are already
+   off. Do not try to speed it up.
+
+   **Read which answer you got; do not loop blind.** `fe7_wait` fingerprints every unit's
+   position and HP across the window, so *"units did move, call again"* and *"NOTHING CHANGED
+   — call `fe7_unstick`"* are different answers with opposite responses. Calling again on the
+   second one is how one run spent four and a half minutes polling a chapter that had already
+   ended, and another spent five and a half on a board that was not moving.
+
+   It also reports whether the cursor actually responds. The phase byte flips **before** an
+   arrival cutscene finishes, so "player phase resumed" is not by itself proof the turn is
+   yours — if it says the cursor is not responding, do not issue unit actions yet.
+
+   Then read **WHAT HAPPENED WHILE YOU WERE NOT LOOKING**, printed on return: deaths, HP
+   changes, arrivals, and which units spent a weapon use. That last part is how you find out
+   what hit you — a dropped use names the attacker and the weapon it swung.
 
 ### Things that will bite you
 
@@ -106,10 +179,18 @@ almost always a mistake — see "when something goes wrong".
   NPCs, who are easy to forget. `fe7_act` checks all three arrays and will tell you.
 - **A unit carrying a staff may be unable to use it.** Rank 0 in a weapon type means the
   class cannot use it at all.
-- **A level-up freezes a unit's spent flag** until dismissed, so an action can look like it
-  never landed when it is only waiting on a press. The tools handle this; do not panic and
-  re-issue the action.
+- **A level-up freezes a unit's spent flag** until it finishes, so an action can look like it
+  never landed when it is only waiting for the level-up to play out. **No button speeds a
+  level-up up** — it runs at its own pace. The tools wait it out; do not panic and re-issue
+  the action.
 - **Ranged weapons exist.** Hand axes, bows and tomes attack from 2 tiles.
+- **A refused attack costs nothing.** If `fe7_act(action:'attack')` finds no enemy in range it
+  backs out and leaves the unit UNSPENT — it does not fall back to Wait. Probing an attack you
+  are unsure about is free, so probe.
+- **`NO ATTACK` in a forecast is information, not an error.** It means that side cannot fight
+  at this range — nearly always a defender that cannot counter — so its numbers were withheld
+  instead of being printed from a struct the game never populated. It is good news: nothing
+  is coming back at you.
 - **A Gate tile does NOT mean the objective is Seize.** Lyn Ch.7 is "Defeat Heintz" and still
   has a gate. Read the objective; do not infer it from terrain.
 - **Terrain can change mid-chapter** (a door opening, a wall breaking). Re-read `fe7_terrain`
@@ -120,9 +201,10 @@ almost always a mistake — see "when something goes wrong".
 ## When something goes wrong
 
 **Call `fe7_unstick` first.** Before pressing anything, before theorising, before retrying.
-It tells you which of three situations you are in — input is being accepted, a menu is open,
-or input is being swallowed — and each has a different fix. Guessing between them wastes
-presses and a wrong `A` can commit an action you did not want.
+It names which situation you are in — input being accepted, a menu open, a target selection,
+a chapter event, an info screen, or input genuinely swallowed — and tells you the button each
+one takes. Guessing between them wastes presses, and a wrong `A` can commit an action you did
+not want.
 
 Then:
 
@@ -178,6 +260,10 @@ standalone tool, since trading doesn't consume the action."`
 
 Name the units, the tiles, what you were trying to achieve, and what you did instead. The
 sketch of the call you wish existed is the most useful part.
+
+**Name the command exactly.** The menu probe gives you the game's own name for every entry, so
+a note can say *"the menu at (11,2) held `[attack, rescue, item, trade*, wait]` and I wanted
+Rescue"* rather than *"I wish I could pick him up"*. That turns a wish into a specification.
 
 ---
 
