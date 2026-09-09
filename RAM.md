@@ -306,7 +306,9 @@ an enemy at `(5,5)` and to an ally at `(5,3)`, giving a genuine 4-entry action m
 Each entry pointer leads to a per-entry struct of stride `0x6C`, and **`+0x30` of that struct is
 a ROM pointer that identifies the command**:
 
-**The ROM command pointers — the stable identity, use these:**
+**The ROM command pointers — the stable identity, use these.** These five were the first
+learned by observation; **all 27 are now known outright** — see *The complete command table*
+below, which supersedes the "learn them one menu at a time" approach.
 
 | Command | ROM pointer |
 |---|---|
@@ -345,8 +347,124 @@ first attempt: the tool read the menu as `[seize, item, wait]`, moved the highli
 pressed A once, and the chapter ended. Nothing was ever pressed on an entry the tool could not
 name, which is what the "derive menu indices, do not scan" rule demands.
 
-The same primitive should unlock **Visit, Door, Chest, Talk, Rescue and Drop** — each needs one
-observation of its menu to learn its ROM pointer, after which it is a constant.
+~~The same primitive should unlock **Visit, Door, Chest, Talk, Rescue and Drop** — each needs one
+observation of its menu to learn its ROM pointer, after which it is a constant.~~
+**Superseded 2026-09-08.** No observation is needed for any of them: the whole command table was
+read out of ROM at once, names included. See the next section.
+
+### The complete unit-action command table — `0x08B95314` — Confirmed (2026-09-08)
+
+Every command a unit can ever be offered, in one ROM table. Base `0x08B95314`, stride `0x24`,
+**exactly 27 entries**, terminated by an all-zero 28th.
+
+#### Struct
+
+| Offset | Type | Holds |
+|---|---|---|
+| `+0x00` | u32 | pointer to a **Shift-JIS Japanese name** (see below) |
+| `+0x04` | u16 | text id |
+| `+0x06` | u16 | text id |
+| `+0x08` | u8 | flag — `0x04` on exactly six entries, see *Free actions* |
+| `+0x09` | u8 | command id, sequential `0x4D`..`0x67` across the 27 |
+| `+0x0C` | u32 | THUMB function pointer |
+| `+0x14` | u32 | THUMB function pointer |
+| `+0x1C`, `+0x20` | u32 | extra handlers — present on **only** Attack, Attack2 and Staff |
+
+#### How the names were read — the text decoder was not needed
+
+The text ids at `+0x04`/`+0x06` **cannot** be resolved with anything this project has: FE7 text is
+compressed, and the only text access is the decode staging buffer at `0x0202A5B4`, which holds
+whatever the game last *rendered*. That was tested and failed — patching Wait's `+0x04` and then
+its `+0x06` to Seize's values and repainting the action menu left the buffer reading `"Wait"`
+both times.
+
+**`+0x00` points at plaintext Shift-JIS instead**, developer names left in the US ROM:
+
+```
+Wait   +0x00 -> 0x081C3EA0:  81 40 91 d2 8b 40 00   ->  待機   taiki    "standby"
+Seize  +0x00 -> 0x081C3F94:  81 40 90 a7 88 b3 00   ->  制圧   seiatsu  "subjugate"
+Attack +0x00 -> 0x081C3F8C:  81 40 8d 55 8c 82 00   ->  攻撃   kougeki  "attack"
+```
+
+Each is `0x8140` (a full-width space) followed by the name, NUL-terminated. Decode as `cp932`.
+The strings sit in **descending** address order as the index rises, which is why the `+0x00`
+pointers count downward; entries 1 and 2 share one pointer because they share a name.
+
+#### The 27
+
+`free` = `+0x08` is `0x04`. `sub` = has the `+0x1C`/`+0x20` handlers.
+
+| # | ROM pointer | id | free | sub | Command | Japanese |
+|---:|---|---|:--:|:--:|---|---|
+| 0 | `0x08B95314` | `4D` | | | Seize | 制圧 *seiatsu* |
+| 1 | `0x08B95338` | `4E` | | ● | Attack | 攻撃 *kougeki* |
+| 2 | `0x08B9535C` | `4F` | | ● | Attack — second handler, purpose **Unverified** | 攻撃 |
+| 3 | `0x08B95380` | `50` | | ● | Staff | 杖 *tsue* |
+| 4 | `0x08B953A4` | `51` | ● | | Ride / mount a ballista | 乗る *noru* |
+| 5 | `0x08B953C8` | `52` | ● | | Dismount | 降りる *oriru* |
+| 6 | `0x08B953EC` | `53` | | | Play — Nils | 奏でる *kanaderu* |
+| 7 | `0x08B95410` | `54` | | | Dance — Ninian | 踊る *odoru* |
+| 8 | `0x08B95434` | `55` | | | Steal | 盗む *nusumu* |
+| 9 | `0x08B95458` | `56` | | | Talk | 話す *hanasu* |
+| 10 | `0x08B9547C` | `57` | | | Support | 支援 *shien* |
+| 11 | `0x08B954A0` | `58` | | | Visit | 訪問 *houmon* |
+| 12 | `0x08B954C4` | `59` | | | Chest | 宝箱 *takarabako* |
+| 13 | `0x08B954E8` | `5A` | | | Door | 扉 *tobira* |
+| 14 | `0x08B9550C` | `5B` | | | Armory | 武器屋 *bukiya* |
+| 15 | `0x08B95530` | `5C` | | | Vendor | 道具屋 *douguya* |
+| 16 | `0x08B95554` | `5D` | | | Secret Shop | 秘密店 *himitsumise* |
+| 17 | `0x08B95578` | `5E` | | | Arena | 闘技場 *tougijou* |
+| 18 | `0x08B9559C` | `5F` | | | Rescue | 救出 *kyuushutsu* |
+| 19 | `0x08B955C0` | `60` | | | Drop | 降ろす *orosu* |
+| 20 | `0x08B955E4` | `61` | ● | | Take | 引受け *hikiuke* |
+| 21 | `0x08B95608` | `62` | ● | | Give | 引渡し *hikiwatashi* |
+| 22 | `0x08B9562C` | `63` | | | Item | 持ち物 *mochimono* |
+| 23 | `0x08B95650` | `64` | ● | | Trade | 交換 *koukan* |
+| 24 | `0x08B95674` | `65` | ● | | Supply — convoy access | 輸送隊 *yusoutai* |
+| 25 | `0x08B95698` | `66` | | | Status | 状況 *joukyou* |
+| 26 | `0x08B956BC` | `67` | | | Wait | 待機 *taiki* |
+
+#### Validation — seven for seven
+
+The decode was never told what any entry should be, yet every pointer already established by
+other means landed on the right name:
+
+| Pointer | Known from | Decoded as |
+|---|---|---|
+| `0x08B95314` | this document, observed menu | Seize ✅ |
+| `0x08B95338` | this document, observed menu | Attack ✅ |
+| `0x08B9562C` | this document, observed menu | Item ✅ |
+| `0x08B95650` | this document, observed menu | Trade ✅ |
+| `0x08B956BC` | this document, two chapters | Wait ✅ |
+| `0x08B954A0` | run log 2026-08-30, **guessed** "Visit" from a house tile | Visit ✅ |
+| `0x08B9559C` | run log 2026-08-30, **guessed** "Rescue" from standing beside an ally | Rescue ✅ |
+
+The last two matter most: both were context-only guesses recorded as unknown hex, and the ROM
+confirmed both independently.
+
+#### Free actions — `+0x08` = `0x04` (Inferred; one case Confirmed)
+
+Six entries carry the flag: **Ride, Dismount, Take, Give, Trade, Supply**. Every one is an action
+FE7 lets a unit perform *without ending its turn*, and **Trade** is independently Confirmed to
+behave exactly that way (`src/fe7.ts` documents that after a trade `+0x0C` is still `0x01` and the
+action menu reopens). The remaining five are untested — treat the flag as a strong hypothesis,
+not a proven field.
+
+#### Menu order follows table order — Confirmed
+
+A live Ch.22 action menu read `[attack, rescue, item, trade, wait]`, whose table indices are
+**1, 18, 22, 23, 26** — strictly ascending. This is what makes index derivation sound: given
+which commands a menu contains, their positions are fully determined.
+
+> **Better still, do not derive at all.** With every command nameable, the right move is to read
+> the menu's entry pointers and *find* the command you want, as `fe7_act(action:'seize')` already
+> does. The staff and item paths in `src/fe7.ts` still guess an index arithmetically
+> (`hasAttack ? 1 : 0`, `count - 2 - hasTrade`), which is what failed in the 2026-09-01 run when a
+> Monk's menu was misread. That guessing can now be deleted outright.
+
+**Note on the neighbouring pool.** The `0x08B95AAC` / stride `0x24` / text-at-`+0x08` pool
+mentioned above is a *different* structure from this one — this table ends at `0x08B956E0`. The
+two should not be conflated.
 
 ### What the cursor readout contains — Confirmed
 
