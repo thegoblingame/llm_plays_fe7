@@ -1789,6 +1789,28 @@ Hector (Iron Axe) vs an enemy holding an **Axereaver** read `+0x53 = 0xE2` (−3
 `+0x54 = 0xFE` (−2 dmg) on Hector, and `+30` / `+2` on the enemy — the reaver's reversed,
 doubled triangle, exactly. A plain axe-vs-anima matchup read `0` / `0` on both sides.
 
+### The two ways a defender's block can read "no attack" — Confirmed (Ch.7x, Ch.8)
+
+Both were seen live and they mean different things:
+
+| Signal | Meaning |
+|---|---|
+| effective hit / crit at `+0x64` / `+0x6A` read `0xFF` | the game never computed this side — it has **no weapon usable at the combat range** (a sword at range 2, a bow at range 1, nothing at all). Its whole block is leftovers. |
+| numbers valid, weapon uses unchanged (0 blows), `+0x13` projected HP = 0 | the side is real but the all-hits projection **killed it before its swing**. It counters exactly when the attacker's first blow misses. |
+| numbers valid, 0 blows, projected HP > 0 | leftovers — not seen live, kept as the fallback verdict |
+
+Erk vs a merc at (10,3)→(11,2) was the first case (a diagonal is range 2); Kent vs a 1 HP
+brigand at range 1 was the second (hit 70%, 0 blows, projected 0).
+
+### Displayed hit is not the real hit — the 2-RN rule
+
+A blow lands when the integer average of two rolls in 0–99 is below the displayed hit, so
+`P(hit) = #{(r1,r2): r1 + r2 < 2h} / 10000`. Closed form, k = 2h − 1: pairs with sum ≤ k
+number (k+1)(k+2)/2 for k ≤ 99 and 10000 − (199−k)(200−k)/2 above. Displayed 50 → 50.5%,
+70 → 81.7%, 80 → 91.8%, 85 → 95.4%, 30 → 18.3%. Crit is one roll, so displayed = true.
+`fe7_forecast` prints both. This is arithmetic on the on-screen number, not a read of the
+RNG state.
+
 ### `+0x13` is a projection, NOT a prediction — Confirmed, and this matters
 
 At target select, both `+0x13` fields hold post-battle HP and both weapon-uses counts have
@@ -2285,3 +2307,383 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
 - **Open `A` on an empty tile, not on a unit.** `A` over a unit selects it for movement;
   over empty ground it opens the field menu. Check the unit arrays for occupancy first —
   cheaper and more reliable than assuming.
+
+---
+
+# The Preparations screen — mapped 2026-09-10
+
+**Everything in this section was measured on Chapter 7x ("The Black Shadow"), Lyn mode,
+US release, 12-unit roster, 10-unit deployment cap, map 15×17.** Where a claim was
+cross-checked against an earlier session's Ch.22 Hector-mode note that is said explicitly.
+Nothing here has been re-run on a second chapter unless stated, and the prep screen's
+structures are all *dynamically allocated procs*, so every address below must be located
+by behaviour, never hardcoded.
+
+## Detecting that Preparations is up — `phase == 0x40 && turn == 0` — Confirmed
+
+`0x0202BC07` (phase) reads `0x40` at Preparations, the same value as the green/NPC phase,
+so phase alone does not identify prep. `0x0202BC08` (turn) reads **0** at Preparations and
+is ≥ 1 from the moment the chapter starts, so the **pair** is the discriminator.
+
+Observed on Ch.7x; the same pair (`0x40`, turn 0) was reported by `fe7_state` at Ch.22
+Hector-mode Preparations, so this is two chapters and two modes.
+
+## Leaving prep — the exact Start transition — Confirmed (Ch.7x)
+
+Recipe: on the prep menu press `Start` (hold 6 frames), then poll `0x0202BC00`+16.
+
+| | before | ~0.5 s | ~1.5 s and after |
+|---|---|---|---|
+| `0x0202BC07` phase | `0x40` | `0x40` | **`0x00`** (player phase) |
+| `0x0202BC08` turn | `0` | `0` | **`1`** |
+| `0x0202BC0A/0B` cursor copy | `07 0B` | — | `0C 0E` (jumps to the lord) |
+| `0x0202BC0C` | `0x50` | — | `0x40` |
+
+So a tool must poll for **`phase == 0x00 && turn == 1`**, not merely for the press to drain.
+It settled between 0.5 s and 1.5 s in three runs. An EWRAM-wide diff across the transition
+reports ~11 000 changed bytes, almost all tile/sprite buffers — do not diff wide here.
+
+## The prep menu — a DIFFERENT struct from in-map menus — Confirmed (Ch.7x)
+
+```
+MI+0x00  u8       highlight index (0-based, WRAPS: Up from 0 -> 4, Down from 4 -> 0)
+MI+0x01  u8       entry count (5 here)
+MI+0x02  u8       0xFF   (constant in every read)
+MI+0x03  u8       0x00
+MI+0x0E  u32[cnt] pointers to the per-entry procs, IN MENU ORDER
+```
+
+**There is NO index mirror**, so `fe7.ts`'s `locateMenu()` — which requires an adjacent
+byte pair showing the identical before/after transition — **cannot find this menu**. That
+is a structural fact, not a tuning problem: `fe7_prep` needs its own locator.
+
+`MI` was `0x020250DA` on Ch.7x and RAM.md's earlier Ch.22 note put the same menu at
+`0x0202543A`, so it is allocated per instance like every other FE7 menu. RAM.md's older
+Ch.22 note said "count comes after index"; that is reconfirmed here, and `+0x02 = 0xFF` and
+the entry-pointer array at `+0x0E` are new.
+
+### Locating it by behaviour — Confirmed, 1 hit out of 262 144 bytes
+
+```
+dump EWRAM -> A
+press Down, settle ~300 ms, dump -> B
+press Down, settle ~300 ms, dump -> C
+keep every offset with B[i] == A[i]+1 and C[i] == B[i]+1
+```
+
+On Ch.7x this returned **exactly one address**, `0x020250DA`, on two separate runs from the
+same save state. Count is then `MI+1`. (Do not filter on "starts at 0": the highlight was on
+index **1** when Preparations opened, not 0.)
+
+### Identifying the entries — the help text tracks the highlight — Confirmed (Ch.7x)
+
+Unlike the in-map action menu (where `0x0202A5B4` only ever holds the LAST entry rendered),
+the prep menu writes the **highlighted entry's help text** into the ASCII buffer at
+`0x0202A5B4` every time the highlight moves. Read it after each Up/Down:
+
+| index | help text (first line) | entry |
+|---|---|---|
+| 0 | `Select which units to field this battle. The number is limited,` | Pick Units |
+| 1 | `Manage your units' items. Item names that appear in gray canno` | Trade |
+| 2 | `This command cannot be used at this time.` | Fortune — **disabled on Ch.7x** |
+| 3 | `View the map. Check the number and type of enemies. Also, check` | Check Map |
+| 4 | `Save any changed information.` | Save |
+
+Index 0 → Pick Units is **Confirmed by effect** (pressed A, the Pick Units screen opened).
+The rest are Confirmed only in the sense that the game itself printed the description.
+
+**The help text is not a safe identifier for a disabled entry** — a greyed-out entry reads
+`This command cannot be used at this time.` and loses its identity. Use the entry procs for
+that.
+
+### The entry procs — stable ROM identity — Unverified (one chapter, one allocation)
+
+Each pointer in `MI+0x0E` points to a proc whose `+0x00` and `+0x04` are both `0x08CC415C`
+(the shared proc script), linked prev/next at `+0x1C`/`+0x20` in menu order, with:
+
+```
+entry+0x2C  u32  ROM code pointer — distinct per entry, the closest thing to an identity
+entry+0x34  u16  label text id
+```
+
+| index | entry | `+0x2C` | `+0x34` |
+|---|---|---|---|
+| 0 | Pick Units | `0x0808DB95` | `0x113D` |
+| 1 | Trade | `0x0808DBA9` | `0x113E` |
+| 2 | Fortune (disabled) | `0x0808DBBD` | `0x1146` |
+| 3 | Check Map | `0x0808DC89` | `0x1141` |
+| 4 | Save | `0x0808DBE5` | `0x1140` |
+
+Reproduced byte-identical across two loads of the same save state. **Not** cross-checked on
+another chapter, and not confirmed by pressing A on each entry, so treat the mapping as
+Unverified. The `+0x34` ids being a near-contiguous run (`113D, 113E, —, 1141, 1140`) with
+the disabled entry the odd one out is corroborating but not proof.
+
+Note these are NOT the 27-entry unit-action command table at `0x08B95314`; that table is
+not involved in the prep menu at all, and `menuEntryCmds()`'s `-0x2D` pointer array and
+`+0x30` command offset do not apply here.
+
+## Pick Units — Confirmed (Ch.7x), including by writing
+
+Open it with A on prep-menu index 0. Its cursor is found with the same two-step trick, but
+**press Down and look for a step of +2**, because the list is two columns wide:
+
+```
+dump, press Down, dump, press Down, dump
+keep offsets where B == A+2 and C == B+2
+```
+
+Ch.7x returned exactly two addresses, `0x02025658` and `0x0202565A` — a u16 index and its
+u16 mirror, 2 bytes apart (the in-map menus' mirror is 1 byte apart; this one is not).
+
+```
+CUR-0x03  u8   units currently deployed
+CUR-0x02  u8   DEPLOYMENT CAP for this chapter  (10 on Ch.7x)
+CUR-0x01  u8   0x01
+CUR+0x00  u16  cursor index  == PLAYER ARRAY SLOT
+CUR+0x02  u16  index mirror
+```
+
+Ch.7x: `CUR = 0x02025658`, so count `0x02025655`, cap `0x02025656`.
+
+- **Geometry: 2 columns.** `Left`/`Right` = ∓1, `Up`/`Down` = ∓2, and it **clamps**, it does
+  not wrap: Right was inert at index 11 (right column) and Left was inert at index 8 (left
+  column). Even index = left column, `row = index >> 1`.
+- **Index == player array slot.** Confirmed by effect: with the cursor on index 6 (help text
+  named Erk), one A press changed `0x0202BF0C` — which is `0x0202BD50 + 6*0x48 + 0x0C`, slot
+  6's state-flag byte — from `0x01` to `0x0B`, and nothing else in the unit arrays moved.
+- **The highlighted unit's name is in the ASCII buffer** at `0x0202A5B4` (`"Wil, bow"`,
+  `"Nils, rary"`, `"Lucius, ng"` — name, then a truncated weapon/rank field).
+
+### Deploy / bench is a per-unit FLAG, not an index list — Confirmed by writing
+
+There is no deployment list anywhere. It is unit `+0x0C` bit 1 and bit 3:
+
+| `+0x0C` | meaning |
+|---|---|
+| `0x00200001` | deployed |
+| `0x0020000B` | benched (bits 1 and 3 set — one A press flips both) |
+| `0x00000008` / `0x00000009` | flagged deployed but **no start position was free** — see below |
+
+One A press on a deployed unit: `0x00200001 -> 0x0020000B`, deployed count 10 → 9.
+One A press on a benched unit: `0x0020000B -> 0x00200001`, count 9 → 10.
+
+**The cap is enforced at the toggle.** At 10/10, A on a benched unit is a complete no-op:
+count stayed `0x0A`, the flag stayed `0x0020000B`, nothing else changed.
+
+**`CUR-0x02` really is the cap — Confirmed by writing.** From a 10/10 state, writing `12`
+to `0x02025656` made two further A presses succeed, taking the count to 11 then 12 with
+both units' flags going to `0x00200001`. The cap is a genuine gate, not a display.
+
+**`x = 0xFF` is NOT the deploy state at Preparations.** During Pick Units the flag flips
+immediately but `+0x10` (x) does **not** move: a unit benched in the UI keeps its map x, and
+a unit deployed in the UI keeps `x = 0xFF`, right up until you leave prep. `fe7_state`'s
+`deployed = (x != 0xFF)` test therefore reports the *stale* answer for anything toggled this
+session. On the map, after the chapter starts, the two agree again. RAM.md's existing
+"x = 0xFF means benched" entry is correct for a live chapter and wrong inside Preparations.
+
+### Proof by writing, no UI at all — Confirmed
+
+From a fresh prep state (slots 0–9 deployed, 10 Nils and 11 Lucius benched):
+
+```
+write32 0x0202BD50 + 9*0x48 + 0x0C = 0x0020000B   (bench Matthew)
+write32 0x0202BD50 + 11*0x48 + 0x0C = 0x00200001  (deploy Lucius)
+press Start, wait for phase 0x00 / turn 1
+```
+
+Result: **Lucius is on the map at (11,13)** — Matthew's old tile — and Matthew reads
+`x = 0xFF`, flags `0x00200009`. Nothing but those two flag words was written. The flag alone
+drives deployment.
+
+### THE ARRAY IS RE-SORTED WHEN YOU LEAVE PREP — Confirmed, and it matters
+
+Leaving Pick Units (B) **and** starting the chapter (Start) both compact the player array so
+that **deployed units occupy the low slots in their existing relative order and benched units
+are pushed to the end**. `+0x0B` (the "roster index" byte) is **renumbered to match the new
+slot order**, so `+0x0B` is a position-in-array field, not a stable character identity — the
+only stable identity is the character-data pointer at `+0x00`.
+
+Observed (Ch.7x), benching Dorcas (slot 5) and Erk (slot 6) via the UI:
+
+| | before B | after B | after Start |
+|---|---|---|---|
+| slot 5 | Dorcas, benched | Serra `(9,16)` | Serra `(9,16)` |
+| slot 8 | Rath | Nils `(255,9)`, deployed | Nils `(12,16)` |
+| slot 9 | Matthew | Lucius `(255,4)`, deployed | Lucius `(8,15)` |
+| slot 10 | Nils, benched-flag | Dorcas `(12,16)` | Dorcas `(255,16)` |
+
+Any `fe7_prep` tool that hands slot numbers back to the caller must re-read the array after
+leaving prep. Slot numbers taken from `fe7_state` **before** prep are not valid after it.
+
+Two more things fall out of the same table:
+
+- **Benching sets x to `0xFF` and leaves y alone.** Dorcas went `(12,16) -> (255,16)`. That
+  explains the otherwise-odd y values on benched units seen at Ch.22.
+- **A newly deployed unit inherits a freed start tile.** Nils and Lucius, both `x = 0xFF` in
+  prep, came out at `(12,16)` and `(8,15)` — exactly the tiles Dorcas and Erk vacated. The
+  chapter's start-position list has a fixed number of slots and deployed units fill them.
+
+### Over-deploying past the cap — Confirmed
+
+With the cap byte forced to 12 and all 12 units flagged deployed, leaving Pick Units made the
+game **silently drop the two units with no start tile**: Nils and Lucius went to
+`+0x0C = 0x00000008` (note the high half-word `0x0020` **cleared**, unlike a normal bench's
+`0x0020000B`) and then `0x00000009` after Start, both still `x = 0xFF`. So the 10 real start
+positions are the hard limit and the cap byte is only the UI's copy of it.
+
+This is direct evidence for the open question about the `0x0020....` half-word: it is not
+allegiance and not "benched", it tracks something like "holds a deployment slot in this
+chapter". Still Inferred.
+
+### Where the cap number comes from — NOT FOUND
+
+`CUR-0x02` is the only address proven to hold it, and that address is inside a proc that only
+exists while Pick Units is open. **The ROM table it is read from was not located.**
+`cap == number of player start positions in the chapter's unit-placement list` is consistent
+with everything observed (10 positions, cap 10, extras silently dropped) but is **Inferred**
+and untested.
+
+Practical consequence for a tool: read the cap from `pickUnitsCursor - 2` with Pick Units
+open. There is currently **no known way to read the deployment cap without opening Pick
+Units**, and no known static address for it. Do not hardcode 10.
+
+Note also that `fe7_state`'s `players deployed 10/12` denominator is `players.length`, the
+**array population**, which coincidentally equalled the roster size here and has nothing to
+do with the cap.
+
+## The full roster — it is the player array, there is no second table — Confirmed (Ch.7x)
+
+The player array at `0x0202BD50` holds every recruited unit, benched included, 12 of 12 here
+(`0x08BD....` character pointer at `+0x00` present in slots 0–11, empty from 12 on). Pick
+Units' cursor indexes it directly. The mirror at `0x020106DC` is the frozen chapter-start
+backup already documented and is byte-identical at prep; it is not the roster source.
+
+## Prep Trade — the first stage is a UNIT picker, 3 columns — Confirmed (Ch.7x)
+
+Prep-menu index 1, A. The screen that opens is a **unit grid**, not an item screen:
+
+```
+PT+0x00  u8   cursor index == PLAYER ARRAY SLOT   (Ch.7x: 0x02025655)
+PT+0x17  u32  pointer to the highlighted unit's struct  (Ch.7x: 0x0202566C)
+```
+
+- `Right` from index 6 moved the index to 7 **and** the pointer `0x0202BF00 -> 0x0202BF48`,
+  which is player slot 6 → slot 7. That pointer is the reliable readback; the index byte
+  alone was ambiguous.
+- **3 columns**, and it clamps: Right was inert at index 2. So `row = slot / 3`,
+  `col = slot % 3`.
+- Benched units are included — the screen opened with Lucius (benched) highlighted.
+- The ASCII buffer is **misleading here**: it frequently holds an item name
+  (`"Iron lance"`, `"Armorslayer"`, `"Pure water"`) rather than the highlighted unit's name,
+  because the rows render each unit's inventory. Do not identify the highlight from it; use
+  `PT+0x17`.
+
+The stage *after* picking a unit was not explored, so **whether the prep trade screen reuses
+the battle trade screen's row/column cursor shape is still unanswered.** What is answered is
+that prep Trade has an extra unit-selection stage in front of it that `fe7Trade` has no
+equivalent of.
+
+## Negative results — do not repeat these
+
+- **The convoy / supply item list was NOT found.** Three approaches failed:
+  (1) scanning all of EWRAM for runs of plausible `id | uses<<8` u16 pairs — drowned in
+  graphics data, the top hits were 300-entry runs inside tile buffers around `0x02022380`;
+  (2) dumping the persistent-looking regions around the roster mirror (`0x02010680`,
+  `0x02010FDC`–`0x02011200`) and the play-state page (`0x0202BC00`–`0x0202BD50`) — all zero
+  or unrelated; (3) walking the prep Trade screen hoping the item grid *was* the convoy — it
+  is a unit grid. The approach that should work next is a **narrow diff across an actual
+  transfer**: get into the second stage of prep Trade (or a map `supply` command next to
+  Merlinus), move one item, and diff. That was not reached.
+- **Gold is still Unverified.** `0x0202BC00` read `0x00001B58` = **7000** at Ch.7x prep, a
+  second plausible value after Ch.22's 7336, but Ch.7x has no shop, no arena and a disabled
+  Fortune, so no spend-and-diff was possible. Two plausible values on two chapters is
+  corroboration of a *kind* and is not proof. The decisive test is still a purchase.
+- **Chapter / map ID** was not looked for.
+
+## Reproduction recipes
+
+Prep menu, from a Preparations screen:
+```
+dump EWRAM; press Down; settle 300ms; dump; press Down; settle 300ms; dump
+-> exactly one byte steps +1 twice: that is MI (0x020250DA on Ch.7x)
+read MI+1 -> 5 (count); read MI+0x0E as 5 u32s -> the entry procs
+navigate with Up/Down, reading 0x0202A5B4 after each move for the help text
+```
+
+Pick Units, from the prep menu:
+```
+navigate MI to 0; press A; settle ~1.2s
+dump; press Down; dump; press Down; dump
+-> two bytes step +2 twice, 2 apart: the low one is CUR (0x02025658 on Ch.7x)
+deployed = read8(CUR-3), cap = read8(CUR-2), slot = read16(CUR)
+toggle with A; verify by re-reading 0x0202BD50 + slot*0x48 + 0x0C (0x01 <-> 0x0B)
+```
+
+Deployment by writing, no UI:
+```
+write32 0x0202BD50 + slot*0x48 + 0x0C = 0x00200001 to deploy, 0x0020000B to bench
+press Start; poll until 0x0202BC07 == 0x00 and 0x0202BC08 == 1
+re-read the whole array — it has been re-sorted and +0x0B renumbered
+```
+
+---
+
+# Enemy movement range — computable from ROM, no input needed — mapped 2026-09-10
+
+**Measured on Chapter 8 ("Vortex of Strategy"), Lyn mode, turn 1, map 15×18, 14 enemies and
+9 player units.** Question asked: can a tool give every enemy's threat range without selecting
+each one? Answer: yes, by flood fill from two ROM tables, and it was checked against the
+game's own grid for all 14 enemies.
+
+## The class struct carries Move and the terrain-cost table — Confirmed by effect
+
+Class struct = `0x54` bytes at the unit's `+0x04` class pointer (RAM.md's existing formula).
+
+```
+class+0x12  u8      Move
+class+0x38  u32[3]  pointers to three terrain-cost tables (normal / rain / snow, by GBAFE
+                    convention — only [0] was used here and only [0] is Confirmed)
+```
+
+Cost table: **indexed directly by terrain ID**, one `u8` per terrain, `0xFF` = impassable.
+`+0x12` gave Lord 5, Cavalier 7, Pegasus 7, Nomad 7, Thief 6, Knight (`cls14`) 4, and 5 for
+Archer / Fighter / Mage / Cleric / Soldier / Brigand / Mercenary / Shaman. The Pegasus table
+reads 1 for every terrain on the map, the Brigand table crosses Peak (`0x12`) at 4 and Mountain
+(`0x11`) at 3, the Cavalier and Nomad tables make Mountain impassable and Forest 3, foot classes
+pay Forest 2 / Fort 2 / Mountain 4 / River `0xFF` (Lord and Brigand: River 5). Pointer values
+seen: `0x08BE3888` Lord, `0x08BE38C9` Archer/Soldier/Merc, `0x08BE3A90` Mage/Cleric/Shaman,
+`0x08BE3B12` Cavalier, `0x08BE3B94` Nomad, `0x08BE3C16` Pegasus, `0x08BE39CD` Brigand,
+`0x08BE390A` Knight, `0x08BE394B` Fighter.
+
+## Pressing A on an ENEMY populates the same movement grid — Confirmed
+
+Cursor onto the enemy, `A`, and the row-pointer table at `0x03000440` fills with that enemy's
+cost map, cost 0 on its own tile, exactly as for a player unit. `B` backs out. Player units
+block it; other enemies are pass-through. **Cost: 1.5–5.1 s per enemy, 34.6 s for 14**, almost
+all of it cursor walking. A 40-enemy map would need ~100 s, so a game-driven tool must be
+resumable. Nothing about it is hard, it is just slow.
+
+## Flood fill reproduces the game's grid — 13 of 14 enemies exact, one tile unexplained
+
+Dijkstra over the terrain layer with the class cost table, budget = Move, player and green
+tiles blocked, enemy tiles pass-through, matched the game's grid **tile for tile** for 13
+enemies (about 470 tiles compared, costs included, not just reachability).
+
+The one disagreement: archer E#3 at `(9,8)`, Move 5. Its grid reads `(10,8) = 1` and
+`(11,8) = 0xFF`; `(11,8)` is Mountain `0x11`, cost 4 for the class, unoccupied in `gBmMapUnit`,
+so the fill gives it 5 = Move and the game refuses it. This is NOT a general "exact budget"
+rule: archer E#10 at `(11,10)`, same class and table, was **granted** `(11,8)` at cost 5 from
+`(11,9) = 1` in the same run, and `(12,9)` (also Mountain) at 5. Both grids were re-read after
+a fresh selection and a 300 ms settle and did not change. **Cause unknown.** Open for the
+memory-investigator; the practical consequence is small — the fill over-claims reach, which
+is the safe direction for a danger map — but a tool that reports "the game's grid" must read
+it, not compute it.
+
+## The range layer at `0x03000BF8` is NOT a simple attack overlay — still Unverified
+
+Read after selecting each enemy, it held small integers (`0x00`–`0x0B`, even `0x1C`) spread
+over far more tiles than the unit could reach, e.g. 135 tiles of value 1 for an archer with
+20 reachable tiles. It looks like a distance or ordering field, not "red tile / not red tile".
+Do not use it for threat range; compute attack tiles from the movement set plus the weapon's
+range nibbles at item `+0x19`.

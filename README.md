@@ -70,7 +70,9 @@ of them confirms its effect by reading memory rather than assuming a button pres
 |---|---|
 | `fe7_state` | The whole battlefield in one call — turn, phase, cursor, every unit with position, HP, stats, items. |
 | `fe7_reachable` | A unit's legal destinations, drawn as a cost map with occupancy marked. |
-| `fe7_act` | One unit's entire turn: select, walk, and commit `wait` / `attack` / `staff` / `item`. |
+| `fe7_act` | One unit's entire turn: select, walk, and commit one of eleven actions — `wait` / `attack` / `staff` / `item` / `seize` are confirmed by effect; `visit` / `door` / `chest` / `ride` / `dismount` / `status` press A and report the before/after delta. Doubles as a menu probe. |
+| `fe7_terrain` | The whole board's terrain in one call, with a `find` pattern to locate gates, villages and forts. |
+| `fe7_threat` | The enemy danger map: how many enemies can attack each tile next phase, and which ones threaten each of your units. Pure read; `verify: slot` cross-checks one enemy against the game's grid. |
 | `fe7_forecast` | Both sides' damage, blows, hit and crit for an attack you have **not** committed to. Unwinds cleanly. |
 | `fe7_unstick` | Why the game appears frozen and what to press. Returns a screenshot. Call it first when confused. |
 | `fe7_note` | Record something the tools could not do. See the feedback loop. |
@@ -126,9 +128,13 @@ hex-to-decimal arithmetic has happened four times. It always looks like a plausi
 
 ## Where the project is
 
-Mid-chapter, **turn 5 of an 11-turn defend map** ("Defend Nils"), Hector mode. 11 player
-units against ~50 enemies. The win condition is surviving to turn 11, not routing the map.
+**Still in the testing phase.** Chapters are played to exercise the tools, not to progress a
+campaign, so the current chapter and turn change constantly and are not recorded here. Grant
+states the chapter and turn in the prompt that starts a session; if he has not, `fe7_state`
+reports both, and turn 0 with a prep phase means the Preparations screen is up.
 
 The RAM map is in good shape: unit structs, all three unit arrays (player, enemy, and the
-green/NPC array), the movement grid, the combat forecast, and the ROM item table are all
-Confirmed. The next step is a full playthrough to find out where the tools fall short.
+green/NPC array), the movement grid, the combat forecast, the ROM item and class tables, the
+seven map layers and the Preparations screen are all Confirmed. Playthroughs now run end to
+end (Lyn 7x was completed 2026-09-10 with no deaths); the work is triaging what each run's
+notes say the tools still cannot do.

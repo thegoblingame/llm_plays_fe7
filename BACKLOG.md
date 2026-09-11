@@ -14,6 +14,29 @@ Each item is tagged with its lane:
 
 ## P0 — blocking real play
 
+### 0. Triage from the Ch.7x run, 2026-09-10 — [tool] unless marked
+
+Source: `runs/2026-09-10.jsonl`. The chapter was completed, so none of these block a win;
+they block *playing well without hand work*.
+
+- **Preparations tool** — nothing drives the prep screen. Leaving prep needs a raw Start
+  press; Pick Units and prep Trade are mapped in `RAM.md` ("The Preparations screen") but
+  have no tool. Florina went into 7x with no weapon because the fix lived in prep Trade.
+  Sketch: `fe7_prep(action:'start' | 'deploy' | 'bench' | 'trade', slot, ...)`.
+- **Names in `fe7_state`** — classes and items print as hex (`cls32`, `6Dx3`). Class name
+  from the ROM class table (id = (ptr − 0x08BE015C) / 0x54), item name from the item table.
+  Spotting the unarmed unit took a manual decode.
+- **Escaped is reported as DIED** — a thief that left the map with the chest's Hammer was
+  summarised as `DIED`. Distinguish HP-0 from vanished-at-full-HP with nobody in range.
+- **Chapter win misattributed** — the kill that ended 7x was reported as "last unspent unit
+  acted, phase ended" with eight units unspent. Count unspent units before saying that; if
+  enemies just hit 0, say the objective was met.
+- **[mem] Archer refused a mountain at exact Move** — E#3 on Ch.8 at (9,8) cannot enter
+  (11,8) at cost 1+4=5 while E#10, same class, enters the same tile at 5. Unoccupied, stable
+  on re-read. `fe7_threat` over-claims it; see `RAM.md` "Enemy movement range".
+- **[mem] The range layer at `0x03000BF8` is not an attack overlay** — it holds small
+  distance-like integers over far more tiles than the unit reaches. What is it?
+
 ### 1. Combat forecast / derived stats — [both]
 
 **Status: LOCATED (2026-08-26). The memory half is done; the tool half is not built.**
@@ -194,6 +217,17 @@ debug when it happens.
   never established
 
 ---
+
+## Closed 2026-09-10
+
+- ~~**Forecast hides a lethal counter**~~ — a defender the all-hits projection kills first
+  read `NO ATTACK`. Now reported as "dies to the FIRST blow" with the chance the attacker
+  misses and the counter's own damage and true hit. Hit is printed displayed AND true (2-RN).
+- ~~**Enemy-phase summary dropped between calls**~~ — `fe7_end_turn` timed out, the phase
+  flipped before `fe7_wait` started, and the early-return path skipped the diff. It now diffs
+  against the stored baseline and says "it came back between calls".
+- ~~**Enemy threat range**~~ — `fe7_threat`: flood fill from ROM Move/cost tables, checked
+  tile-for-tile against the game's grid on 13 of 14 Ch.8 enemies. Pure read, 0.75 s.
 
 ## Closed 2026-08-29
 

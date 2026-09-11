@@ -62,6 +62,10 @@ reverted and the next run starts fresh.
    are listed, no chapter is loaded and you need a human to load one.
 2. Check the phase is `player`. If not, `fe7_wait`.
 3. If anything looks strange, `fe7_unstick` before pressing anything.
+4. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up.** No tool
+   drives it. Press Start once with `mgba_press_buttons` (hold 6 frames), then `fe7_wait`; the
+   chapter begins on turn 1. Unit slots can be re-sorted when prep closes, so read `fe7_state`
+   again before trusting any slot number from before.
 
 ---
 
@@ -71,14 +75,15 @@ reverted and the next run starts fresh.
 |---|---|
 | `fe7_state` | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP. |
 | `fe7_reachable` | Where one unit can legally go, as a cost map with allies, greens and enemies marked. |
-| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit `wait` / `attack` / `staff` / `item` / `seize`. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
+| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit an action. Five are confirmed by effect: `wait` / `attack` / `staff` / `item` / `seize`. Six more are the **shallow tier** — `visit` / `door` / `chest` / `ride` / `dismount` / `status` — which press A and report the before/after delta instead of claiming success. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
 | `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
+| `fe7_threat` | The enemy DANGER MAP: for every tile, how many enemies can attack it next enemy phase, and which enemies threaten each of your units. Pure read, computed from ROM Move/cost tables. Pass `verify: slot` to cross-check one enemy against the game's own grid. |
 | `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
-| `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Commits nothing. |
+| `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Hit is printed as the displayed value AND the true chance — FE7 averages two rolls, so displayed 70 lands 81.7% and displayed 30 only 18.3%; plan on the true number. A defender the projection kills first is reported with the chance it survives to counter. Commits nothing. |
 | `fe7_unstick` | Why the game seems frozen and what to press. Returns a screenshot. |
 | `fe7_note` | Record something the tools could not do. |
 | `fe7_end_turn` | End the player phase. Returns quickly. |
-| `fe7_wait` | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. |
+| `fe7_wait` | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. If the phase came back between calls it says so and still prints what happened. |
 
 Raw `mgba_*` tools exist, but **prefer the `fe7_*` tools every time**. The raw ones take
 absolute hex addresses and blind button presses; the `fe7_*` ones take tile coordinates and
@@ -87,8 +92,9 @@ almost always a mistake — see "when something goes wrong".
 
 ### The 27 actions — what is known, and what still is not
 
-The game offers **27 unit actions**. `fe7_act` implements five: `wait`, `attack`, `staff`,
-`item`, `seize`. All 27 are catalogued in `RAM.md`; you do not need it to play.
+The game offers **27 unit actions**. `fe7_act` takes eleven: five confirmed by effect —
+`wait`, `attack`, `staff`, `item`, `seize` — and the six shallow-tier ones, which press A and
+report a delta rather than a verdict. All 27 are catalogued in `RAM.md`; you do not need it to play.
 
 **What changed:** the other 22 are no longer *unidentifiable*. Every command has a stable ROM
 pointer, and the tool layer reads a live menu and names each entry, so "what can this unit do
@@ -128,8 +134,10 @@ wish I could rescue".
 
 #### What actually goes wrong if you try one
 
-- **You cannot invoke them.** `fe7_act`'s `action` takes only the five. The probe tells you
-  what is there; it does not let you do it. Record and move on.
+- **You cannot invoke the medium and deep tiers.** `fe7_act`'s `action` stops at the shallow
+  tier. The probe tells you what is there; it does not let you do it. Record and move on.
+- **A shallow-tier action reports a delta, not a verdict.** Read what changed and judge; if
+  it worked, that delta is the confirm signal nobody has recorded yet — note it.
 - **Reaching a screen is not completing it.** Everything except `Wait` backs out with `B`, so
   landing on Rescue's target select by accident is recoverable — but getting there is the easy
   half.
@@ -151,10 +159,16 @@ command and what you did instead. Do not go hunting through all 22.
 0. **`fe7_terrain`** once per chapter — where the gate, villages, forts and impassable
    tiles are. You cannot plan an objective you have not located, and it is three reads.
 1. **`fe7_state`** — read the board.
+1b. **`fe7_threat`** — the danger map. Do not path enemies by hand; the two mistakes that
+   cost HP on Ch.7x (a mage firing through a wall, a diagonal that was really range 2) were
+   both pathing errors this call does not make.
 2. **Decide.** Who is in danger, who can reach what.
 3. **`fe7_forecast`** before any attack where the outcome matters — a wounded unit, a
    possible kill, or a choice between targets. It costs one call and commits nothing.
 4. **`fe7_act`** per unit. Pass `target_slot` so the target is verified rather than guessed.
+   Independent moves — destinations all empty right now — can go in ONE tool block; the
+   server runs them one at a time. Put a move into a tile another unit is vacating in the
+   next block.
 5. **`fe7_end_turn`**, then **`fe7_wait`** until the player phase returns. A full enemy phase
    takes about four minutes. That is normal and is the floor — battle animations are already
    off. Do not try to speed it up.
@@ -184,6 +198,13 @@ command and what you did instead. Do not go hunting through all 22.
   level-up up** — it runs at its own pace. The tools wait it out; do not panic and re-issue
   the action.
 - **Ranged weapons exist.** Hand axes, bows and tomes attack from 2 tiles.
+- **Ranged attacks go through walls.** A mage inside a sealed room hit Kent through the wall
+  at range 2 on Ch.7x, and Rath shot back through it. Walls block movement, not arrows.
+- **A diagonal neighbour is range 2, not range 1.** Erk at (10,3) hitting a merc at (11,2)
+  was a range-2 attack, so the merc's sword could not counter. Count Manhattan distance.
+- **Enemies break breakable walls.** A second "Wall" terrain ID that reads the same on the
+  cursor is breakable; soldiers spent lance uses on it for two turns and it became Floor.
+  A weapon use with no visible target in the enemy-phase summary usually means this.
 - **A refused attack costs nothing.** If `fe7_act(action:'attack')` finds no enemy in range it
   backs out and leaves the unit UNSPENT — it does not fall back to Wait. Probing an attack you
   are unsure about is free, so probe.
