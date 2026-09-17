@@ -237,6 +237,8 @@ debug when it happens.
 - ~~**True map dimensions**~~ — **RESOLVED.** `gBmMapSize` at `0x0202E3D8` is `u16 width`
   then `u16 height`, a direct read. Confirmed on two chapters of opposite shape
 - ~~**No seize action**~~ — **BUILT.** `fe7_act(action:'seize')` completed Lyn Ch.1
+- ~~**Weapon selection in attacks**~~ — **BUILT 2026-09-16.** `weapon_slot` on `fe7_act`/`fe7_forecast` walks the Attack weapon list and confirms the pick from gBattleActor+0x4A; one-entry (range-filtered) lists are handled. Side effect: the pick is re-equipped even on a cancelled forecast.
+- ~~**Inventory-full prompt**~~ — **BUILT 2026-09-17.** Drop bit 0x1000 tags `DROPS` in `fe7_state`; the post-combat loop, `fe7_wait`/`fe7_end_turn` and `fe7_unstick` detect the open 6-entry list (the text buffer never names it) and stop before any A; `fe7_inventory_full(index)` answers it, confirmed from the receiver's inventory. Verified on a player-phase kill and an enemy-phase counter kill. Untested: the discard variant with no Merlinus.
 - ~~**Combat forecast tool**~~ — **BUILT.** `fe7_forecast` ships
 - ~~**Movement grid decoded with hardcoded geometry**~~ — **FIXED.** It is derived per chapter
   from the row-pointer table. This was chapter-blocking: it made Lyn Ch.1 unwinnable and

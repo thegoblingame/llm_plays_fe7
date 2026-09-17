@@ -79,11 +79,12 @@ reverted and the next run starts fresh.
 | `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
 | `fe7_threat` | The enemy DANGER MAP: for every tile, how many enemies can attack it next enemy phase, and which enemies threaten each of your units. Pure read, computed from ROM Move/cost tables. Pass `verify: slot` to cross-check one enemy against the game's own grid. |
 | `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
-| `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Hit is printed as the displayed value AND the true chance — FE7 averages two rolls, so displayed 70 lands 81.7% and displayed 30 only 18.3%; plan on the true number. A defender the projection kills first is reported with the chance it survives to counter. Commits nothing. |
+| `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Hit is printed as the displayed value AND the true chance — FE7 averages two rolls, so displayed 70 lands 81.7% and displayed 30 only 18.3%; plan on the true number. A defender the projection kills first is reported with the chance it survives to counter. Commits nothing. Pass `weapon_slot` to forecast a specific weapon; the game re-equips it even though nothing is committed. |
 | `fe7_unstick` | Why the game seems frozen and what to press. Returns a screenshot. |
 | `fe7_note` | Record something the tools could not do. |
 | `fe7_end_turn` | End the player phase. Returns quickly. |
 | `fe7_wait` | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. If the phase came back between calls it says so and still prints what happened. |
+| `fe7_inventory_full` | Answers the "inventory is full, send an item to Merlinus" list that HALTS the game when a unit holding 5 items picks up a drop. Enemies that drop are tagged `DROPS` in `fe7_state`. `fe7_act`, `fe7_wait`, `fe7_end_turn` and `fe7_unstick` stop and print the six entries when it is up; decide which item is least needed and pass its index. The last entry is the new item, and sending it leaves the kit as it was. |
 
 Raw `mgba_*` tools exist, but **prefer the `fe7_*` tools every time**. The raw ones take
 absolute hex addresses and blind button presses; the `fe7_*` ones take tile coordinates and
@@ -205,6 +206,8 @@ command and what you did instead. Do not go hunting through all 22.
 - **Enemies break breakable walls.** A second "Wall" terrain ID that reads the same on the
   cursor is breakable; soldiers spent lance uses on it for two turns and it became Floor.
   A weapon use with no visible target in the enemy-phase summary usually means this.
+- **A drop into a full inventory halts the game on an item list, and A on it SENDS the highlighted item** (the unit's equipped weapon) to Merlinus with no confirmation. The tools now stop and report instead of pressing; answer with `fe7_inventory_full`. Only send a 5-item unit to kill a `DROPS` enemy when you mean to.
+- **Choosing a weapon re-equips it.** `weapon_slot` on `fe7_act` or `fe7_forecast` moves that weapon to slot 0 even when the forecast is cancelled, so re-read `fe7_state` before reusing slot numbers.
 - **A refused attack costs nothing.** If `fe7_act(action:'attack')` finds no enemy in range it
   backs out and leaves the unit UNSPENT — it does not fall back to Wait. Probing an attack you
   are unsure about is free, so probe.

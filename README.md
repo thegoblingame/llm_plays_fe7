@@ -73,10 +73,11 @@ of them confirms its effect by reading memory rather than assuming a button pres
 | `fe7_act` | One unit's entire turn: select, walk, and commit one of eleven actions — `wait` / `attack` / `staff` / `item` / `seize` are confirmed by effect; `visit` / `door` / `chest` / `ride` / `dismount` / `status` press A and report the before/after delta. Doubles as a menu probe. |
 | `fe7_terrain` | The whole board's terrain in one call, with a `find` pattern to locate gates, villages and forts. |
 | `fe7_threat` | The enemy danger map: how many enemies can attack each tile next phase, and which ones threaten each of your units. Pure read; `verify: slot` cross-checks one enemy against the game's grid. |
-| `fe7_forecast` | Both sides' damage, blows, hit and crit for an attack you have **not** committed to. Unwinds cleanly. |
+| `fe7_forecast` | Both sides' damage, blows, hit and crit for an attack you have **not** committed to. Unwinds cleanly. `weapon_slot` picks the weapon, and the game re-equips it even so. |
 | `fe7_unstick` | Why the game appears frozen and what to press. Returns a screenshot. Call it first when confused. |
 | `fe7_note` | Record something the tools could not do. See the feedback loop. |
 | `fe7_end_turn` / `fe7_wait` | End the player phase, then wait through the enemy phase in resumable chunks. |
+| `fe7_inventory_full` | Answer the inventory-full prompt (a drop picked up by a unit holding 5 items) that halts the game; the other tools stop and print the list when it is up. |
 
 **Why the logic is in TypeScript and not Lua:** `bridge.lua`'s handlers run inside mGBA's
 frame callback, so a Lua handler that waited for frames would stop frames advancing —
