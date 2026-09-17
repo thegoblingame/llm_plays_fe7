@@ -1,58 +1,54 @@
-# Run Playbook
+# Chapter Playbook
 
-**Read this before playing. It is self-contained — you do not need to read anything else to
-start, though `RAM.md` is there when you need a fact and `README.md` explains the repo
+**Read this before playing a chapter. It is self-contained — you do not need to read anything
+else to start, though `RAM.md` is there when you need a fact and `README.md` explains the repo
 layout and the current chapter.**
+
+This is the playbook for **beating one chapter**. `SCOUTING_RUNBOOK.md` is its sibling for
+runs whose point is to find tool gaps; the two share most of their text and differ in what
+the run is for.
 
 ---
 
 ## What your job actually is
 
-You have two jobs, and the second one is the deliverable.
+You have two jobs.
 
-1. **Play the chapter.** Get as far as you can.
+1. **Beat the chapter.** This is the primary objective. Clear the win condition — seize the
+   gate, defeat the boss, survive the turn count, protect whoever must be protected — with
+   as few losses as you can manage, and finish.
 2. **Record everything the tools could not do.** Every time you wanted an action that does
    not exist, had to work around a limitation, or could not tell what was going on.
 
-**Job 2 is the primary mission. Job 1 is secondary, and exists to generate job 2.** A run
-that ends "I played seven turns and it went fine" is a **failed run** — not because playing
-well is bad, but because it produced no information. A run where you lose the chapter on
-turn 3 having recorded eleven concrete gaps is a good run.
+**Job 1 is the mission. Job 2 is secondary, and it is cheap** — one `fe7_note` call that
+never blocks and changes nothing in the game — so do it as you go rather than skipping it.
+A run that clears the chapter and records the three places the tools got in the way is the
+ideal outcome. A run that clears the chapter and records nothing is still a win, just a
+less useful one.
 
-### When the two conflict, information wins. Always.
+Play to win. Take risks when the odds favour them and avoid them when they do not, the way
+a careful player would. Experiments are welcome when they are free — a refused attack costs
+nothing, a menu probe costs nothing — but do not spend a unit or a turn purely to see what a
+tool says. That is the scouting runbook's job, not this one's.
 
-This is the rule to internalise, because it inverts the instinct a game trains into you.
+**Never pause to ask permission.** Not before a risky move, not before something that might
+lose a unit, not before an experiment. Decide, act, and record what happened. Saves can be
+reverted; there is a full backup.
 
-If finding something out might get a unit killed, or lose the chapter — **find it out.**
-Try the risky move to see what the tool reports. Walk a unit somewhere questionable to learn
-whether the destination is refused. Spend a turn on an experiment. None of that needs
-weighing up, and none of it needs permission. Saves can be reverted; an unanswered question
-costs another whole run.
-
-The two goals are mostly *symbiotic* rather than opposed — the further you get, the more of
-the game you touch and the more you learn, so playing competently is worth doing. But the
-moment they genuinely pull against each other, information wins, every time, without
-deliberation.
-
-**Never pause to ask permission.** Not before a risky move, not before something
-destructive, not before an experiment that might end the chapter. Just do it and record what
-happened.
-
-Unit deaths are expected and inevitable. Losing a chapter is fine. Corrupting the save is
-fine — there is a full backup. Never report a loss as though it were a failure; report it as
-what happened, and move on.
+Unit deaths happen. Losing a chapter can happen. Never report a loss as though it were
+shameful; report it as what happened, say what you would do differently, and stop.
 
 ### What actually ends a chapter
 
-Two things, and they are constraints on play — not things to be anxious about:
+Two things, and they are the constraints you plan around:
 
 - **A lord dies.** Lyn, Eliwood, or Hector. Whichever of them the chapter has deployed.
 - **A unit you are required to protect dies**, on a chapter whose objective is to defend
   someone.
 
-Everything else — any other unit dying, the turn limit, a failed experiment — is a normal
-outcome. If a chapter ends, say so plainly, note what you learned, and stop; the save gets
-reverted and the next run starts fresh.
+Everything else — any other unit dying, a turn spent badly, a failed experiment — is a
+setback, not the end. If a chapter ends, say so plainly, note what you learned, and stop; the
+save gets reverted and the next run starts fresh.
 
 ---
 
@@ -66,6 +62,8 @@ reverted and the next run starts fresh.
    drives it. Press Start once with `mgba_press_buttons` (hold 6 frames), then `fe7_wait`; the
    chapter begins on turn 1. Unit slots can be re-sorted when prep closes, so read `fe7_state`
    again before trusting any slot number from before.
+5. **Take an opening screenshot** (see "Screenshots" below) so the run's record starts with
+   what the screen actually showed — the objective text, the map, and any dialogue.
 
 ---
 
@@ -75,20 +73,71 @@ reverted and the next run starts fresh.
 |---|---|
 | `fe7_state` | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP. |
 | `fe7_reachable` | Where one unit can legally go, as a cost map with allies, greens and enemies marked. |
-| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit an action. Five are confirmed by effect: `wait` / `attack` / `staff` / `item` / `seize`. Six more are the **shallow tier** — `visit` / `door` / `chest` / `ride` / `dismount` / `status` — which press A and report the before/after delta instead of claiming success. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
+| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit an action. On an attack, pass `weapon_slot` to swing a chosen inventory weapon (the Rapier, the Silver Lance); without it the EQUIPPED weapon, slot 0, is always used, and the game re-equips whatever you pick, so re-read `fe7_state` for slot numbers afterwards. Five are confirmed by effect: `wait` / `attack` / `staff` / `item` / `seize`. Six more are the **shallow tier** — `visit` / `door` / `chest` / `ride` / `dismount` / `status` — which press A and report the before/after delta instead of claiming success. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
 | `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
 | `fe7_threat` | The enemy DANGER MAP: for every tile, how many enemies can attack it next enemy phase, and which enemies threaten each of your units. Pure read, computed from ROM Move/cost tables. Pass `verify: slot` to cross-check one enemy against the game's own grid. |
 | `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
 | `fe7_forecast` | Both sides' damage, number of blows, hit% and crit% for an attack you have **not** committed to. Hit is printed as the displayed value AND the true chance — FE7 averages two rolls, so displayed 70 lands 81.7% and displayed 30 only 18.3%; plan on the true number. A defender the projection kills first is reported with the chance it survives to counter. Commits nothing. |
 | `fe7_unstick` | Why the game seems frozen and what to press. Returns a screenshot. |
-| `fe7_note` | Record something the tools could not do. |
+| `fe7_note` | Record something the tools could not do, and log every screenshot you take. |
 | `fe7_end_turn` | End the player phase. Returns quickly. |
 | `fe7_wait` | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. If the phase came back between calls it says so and still prints what happened. |
+| `mgba_screenshot` | A picture of the screen, saved to a path you choose. **Use it liberally** — see "Screenshots" below for when and how. |
 
-Raw `mgba_*` tools exist, but **prefer the `fe7_*` tools every time**. The raw ones take
-absolute hex addresses and blind button presses; the `fe7_*` ones take tile coordinates and
-slot numbers and verify every step against memory. Dropping to raw presses mid-run is
-almost always a mistake — see "when something goes wrong".
+Raw `mgba_*` tools other than `mgba_screenshot` exist, but **prefer the `fe7_*` tools every
+time** for driving the game. The raw ones take absolute hex addresses and blind button
+presses; the `fe7_*` ones take tile coordinates and slot numbers and verify every step
+against memory. Dropping to raw presses mid-run is almost always a mistake — see "when
+something goes wrong".
+
+### Screenshots — use them liberally
+
+`mgba_screenshot` is the one raw tool you should reach for freely. Take one whenever:
+
+- A listed tool does not cover what you want to know. The objective text, a dialogue box, a
+  cutscene, the Preparations screen, a shop or arena screen, a level-up card, a support
+  conversation — none of these have a `fe7_*` reader, and a screenshot is how you see them.
+- A tool's answer would be **stronger with a picture beside it.** You are about to commit a
+  risky attack, a unit's position looks wrong, a menu is open that you did not expect, the
+  enemy phase did something the summary did not explain. Take the screenshot, then act.
+- You are unsure what state the game is in. `fe7_unstick` already returns one; a plain
+  `mgba_screenshot` is the cheaper call when you only want to look.
+- Something notable just happened — a death, a boss kill, a village visit, a seize, the end
+  of the chapter. The record should show it.
+
+When in doubt, take the screenshot. It costs one call, changes nothing in the game, and the
+file is small.
+
+**Screenshots supplement memory; they do not replace it.** Game state — positions, HP,
+whose turn it is, what a unit can reach — still comes from `fe7_state` and friends, which are
+checkable. A screenshot tells you what is *displayed*: text, portraits, menus, the cursor.
+If a screenshot and a memory read disagree, trust the memory read for the next action and
+record the disagreement with `fe7_note` — that is a real finding.
+
+#### How to take one
+
+Always pass an explicit `path`. Omitting it writes to the system temp folder, where the file
+will be lost, and passing an existing path overwrites it silently. Save every screenshot into
+this repo's `screenshots/` folder, which already exists, with a name that says when and why:
+
+```
+screenshots/<YYYY-MM-DD>_ch<chapter>_t<turn>_<what>.png
+```
+
+For example `screenshots/2026-09-11_ch7_t03_boss-forecast.png` or
+`screenshots/2026-09-11_ch7_t00_objective.png`. Use the absolute path when you call the tool
+(the repo lives at `~/Desktop/fe7_llm_experiments/llm_plays_fe7`). If you take more than one
+on the same turn for the same reason, add a suffix (`-2`, `-3`) rather than overwriting.
+
+#### Every screenshot gets a note
+
+Immediately after each `mgba_screenshot`, call `fe7_note` with `kind: "screenshot"`, the
+saved path, the turn, and one line on **why you took it** and **what it showed**. The
+automatic log records that the tool ran, but not what you were looking for or what you saw,
+and a folder of unlabelled PNGs is nearly useless afterwards.
+
+**Keep every screenshot. Never delete or overwrite one.** They are part of the run's record
+and are reviewed after the run alongside the notes.
 
 ### The 27 actions — what is known, and what still is not
 
@@ -96,14 +145,13 @@ The game offers **27 unit actions**. `fe7_act` takes eleven: five confirmed by e
 `wait`, `attack`, `staff`, `item`, `seize` — and the six shallow-tier ones, which press A and
 report a delta rather than a verdict. All 27 are catalogued in `RAM.md`; you do not need it to play.
 
-**What changed:** the other 22 are no longer *unidentifiable*. Every command has a stable ROM
-pointer, and the tool layer reads a live menu and names each entry, so "what can this unit do
-on this tile" now has an exact answer instead of a guess. Selecting any of the 27 is a solved
-problem — the layer can find an entry, confirm it by pointer and move the highlight onto it
-without ever pressing `A` on something it cannot name.
+Every command has a stable ROM pointer, and the tool layer reads a live menu and names each
+entry, so "what can this unit do on this tile" has an exact answer instead of a guess.
+Selecting any of the 27 is a solved problem — the layer can find an entry, confirm it by
+pointer and move the highlight onto it without ever pressing `A` on something it cannot name.
 
 **What is still missing is everything after that `A`.** Each action opens its own screen, and
-each needs a memory signal that proves it landed. That is the work, not the identification.
+each needs a memory signal that proves it landed.
 
 #### Seeing what a unit is actually offered
 
@@ -116,13 +164,13 @@ No Seize entry on unit #0's action menu at (11,2) — the menu holds
 ```
 
 A trailing `*` marks an action that does **not** consume the unit's turn. Reach for this
-whenever you want to know what a tile really offers, then write a note that names the command
-exactly — "the game offered Rescue here and I could not invoke it" is worth far more than "I
-wish I could rescue".
+whenever you want to know what a tile really offers. If it names something you needed and
+could not invoke, write a note that names the command exactly.
 
 > ⚠️ **Do not probe with it where Seize would genuinely be offered** — a lord standing on a
 > gate or throne. There it does not just look: it moves the highlight onto Seize and presses
-> `A`, which commits, and on a Seize chapter that ends the chapter.
+> `A`, which commits, and on a Seize chapter that ends the chapter. On a Seize chapter that
+> is of course the point — but only when you mean it.
 
 #### How far each of the 22 actually is
 
@@ -135,22 +183,23 @@ wish I could rescue".
 #### What actually goes wrong if you try one
 
 - **You cannot invoke the medium and deep tiers.** `fe7_act`'s `action` stops at the shallow
-  tier. The probe tells you what is there; it does not let you do it. Record and move on.
-- **A shallow-tier action reports a delta, not a verdict.** Read what changed and judge; if
-  it worked, that delta is the confirm signal nobody has recorded yet — note it.
+  tier. The probe tells you what is there; it does not let you do it. Plan around it, record
+  it, and move on.
+- **A shallow-tier action reports a delta, not a verdict.** Read what changed and judge; take
+  a screenshot if the delta is ambiguous. If it worked, that delta is the confirm signal
+  nobody has recorded yet — note it.
 - **Reaching a screen is not completing it.** Everything except `Wait` backs out with `B`, so
-  landing on Rescue's target select by accident is recoverable — but getting there is the easy
-  half.
+  landing on Rescue's target select by accident is recoverable.
 - **Confirming is the real gap.** For most of the 22 nothing is known about which memory
-  changes prove success. That matters more than it sounds: an action can work perfectly and
-  the tool still report that nothing happened, which is the worst failure shape available
-  because it invites doing it twice.
+  changes prove success. An action can work perfectly and the tool still report that nothing
+  happened, which invites doing it twice. Check `fe7_state` (and a screenshot) before
+  repeating anything.
 - **A menu entry is not a guarantee.** The game offering Rescue means Con and Aid allow it;
   it says nothing about whether your intended target is in range.
 
 **When a menu offers something you cannot invoke, that is a known gap, not a mistake on your
 part.** Record it with `fe7_note` *as it comes up in play*, naming the unit, the tile, the
-command and what you did instead. Do not go hunting through all 22.
+command and what you did instead. Do not go hunting through all 22 — you have a chapter to win.
 
 ---
 
@@ -158,11 +207,13 @@ command and what you did instead. Do not go hunting through all 22.
 
 0. **`fe7_terrain`** once per chapter — where the gate, villages, forts and impassable
    tiles are. You cannot plan an objective you have not located, and it is three reads.
+   Pair it with the opening screenshot so you also know what the objective *says*.
 1. **`fe7_state`** — read the board.
 1b. **`fe7_threat`** — the danger map. Do not path enemies by hand; the two mistakes that
    cost HP on Ch.7x (a mage firing through a wall, a diagonal that was really range 2) were
    both pathing errors this call does not make.
-2. **Decide.** Who is in danger, who can reach what.
+2. **Decide.** Who is in danger, who can reach what, what moves the chapter toward its win
+   condition. Keep the lord out of the danger map unless the numbers say otherwise.
 3. **`fe7_forecast`** before any attack where the outcome matters — a wounded unit, a
    possible kill, or a choice between targets. It costs one call and commits nothing.
 4. **`fe7_act`** per unit. Pass `target_slot` so the target is verified rather than guessed.
@@ -185,7 +236,8 @@ command and what you did instead. Do not go hunting through all 22.
 
    Then read **WHAT HAPPENED WHILE YOU WERE NOT LOOKING**, printed on return: deaths, HP
    changes, arrivals, and which units spent a weapon use. That last part is how you find out
-   what hit you — a dropped use names the attacker and the weapon it swung.
+   what hit you — a dropped use names the attacker and the weapon it swung. If the summary
+   leaves you unsure what happened, take a screenshot before the next move.
 
 ### Things that will bite you
 
@@ -213,7 +265,8 @@ command and what you did instead. Do not go hunting through all 22.
   instead of being printed from a struct the game never populated. It is good news: nothing
   is coming back at you.
 - **A Gate tile does NOT mean the objective is Seize.** Lyn Ch.7 is "Defeat Heintz" and still
-  has a gate. Read the objective; do not infer it from terrain.
+  has a gate. Read the objective — the opening screenshot shows it — and do not infer it
+  from terrain.
 - **Terrain can change mid-chapter** (a door opening, a wall breaking). Re-read `fe7_terrain`
   if the map stops matching what you expect, rather than trusting a stale copy.
 
@@ -237,13 +290,13 @@ Then:
 - **Do not edit `src/fe7.ts` mid-run.** Changes need a rebuild and a restart to take effect,
   so the edit does nothing except make the run inconsistent with the log. Record the gap and
   keep playing.
-- **Never read game state off a screenshot.** `fe7_unstick` returns one so you can see *what
-  is displayed* — dialogue text, a menu, the objective. Game state comes from memory, which
-  is checkable. Pixels invite confident misreadings.
+- **Screenshots are for what is displayed, not for game state.** Use them freely to see
+  dialogue text, a menu, the objective, or to sanity-check a surprising memory read. Then
+  take the next action from memory, which is checkable. When the two disagree, record it.
 
 ---
 
-## Recording — the actual deliverable
+## Recording — the secondary deliverable
 
 Two channels. You only drive one of them.
 
@@ -254,18 +307,19 @@ they are already captured.
 **`fe7_note` — this is your job.** It catches what automatic logging structurally cannot: a
 tool that does not exist never fails. If there is no rescue action, nothing errors; you just
 quietly never try, and the log looks clean. **Only you know you wanted something that was
-not there.**
+not there.** It is also where every screenshot gets its label.
 
 ### Call `fe7_note` the moment you think any of these
 
 - *"I wish I could…"* — a missing action. This is the most valuable kind.
 - *"I'll just work around this."* — record it, then do the workaround.
-- *"I can't tell what happened."* — confusion is a finding.
+- *"I can't tell what happened."* — confusion is a finding. Take a screenshot too.
 - *"That's not what I expected."* — a tool reported something that turned out to be false.
 - *"I'm not going to bother, it's too awkward."* — that is a gap talking.
+- *You just took a screenshot.* — `kind: "screenshot"`, path, turn, why, what it showed.
 
-Err heavily toward recording. It is one cheap call, it never blocks, and it changes nothing
-in the game. An over-full list is far more useful than a tidy empty one.
+Err toward recording. It is one cheap call, it never blocks, and it changes nothing in the
+game.
 
 ### Write notes someone can act on
 
@@ -291,7 +345,9 @@ Rescue"* rather than *"I wish I could pick him up"*. That turns a wish into a sp
 ## Do not stop to fix things
 
 Log it and keep playing. Fixing one problem mid-run means reacting to issues one at a time
-and never seeing the shape of the whole list — which is exactly the guessing game this run
-exists to replace. Triage happens afterwards, with everything visible at once.
+and never seeing the shape of the whole list. Triage happens afterwards, with everything
+visible at once — notes, the automatic log, and the screenshots together.
 
-The only reason to stop is if you genuinely cannot make progress at all.
+The only reasons to stop are that the chapter is won, the chapter is lost, or you genuinely
+cannot make progress at all. When you stop, take a final screenshot, say which of the three
+it was, and summarise in a few lines: the outcome, the units lost, and the gaps you recorded.

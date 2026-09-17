@@ -1429,7 +1429,7 @@ Also useful as a cross-check: the highlight is drawn as tile rows near `0x020235
 | Unit action menu (Lyn, no adjacent enemy) | 2 | `Item`, `Wait` |
 | Item list | = item count | the unit's inventory slots, **index == slot index** |
 | Staff list | = staff count | only items of weapon type 4, in inventory order |
-| Attack weapon list | = equippable weapons | subset of the inventory |
+| Attack weapon list | = wieldable weapons | inventory order, wieldable only (Confirmed 2026-09-16: Eliwood 01,03,09 -> entries 0,1,2; Marcus 5 weapons -> 5 entries). **Picking an entry re-equips it at once and B does not undo it** — a cancelled forecast left the picked weapon in slot 0. The loaded weapon is confirmed at target select from `gBattleActor+0x4A`; `fe7_act`/`fe7_forecast` `weapon_slot` walk the list on that signal. A weapon with no target in range IS left off the list (Confirmed 2026-09-16: Hector at range 2 was offered only the Hand Axe), and a filtered list can have ONE entry, which `locateMenu` cannot detect — the weapon path then presses one A and confirms by effect. |
 | Item sub-menu (after picking an item) | 3 | `Use`/`Equip`, …, and `Discard` last |
 | **Preparations menu** | 5 | `Pick Units`, `Trade`, `Fortune`, `Check Map`, `Save` |
 
@@ -2152,6 +2152,7 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   on a *player* unit
 - Purpose of the second `"Mark"` copy at `0x02020160`
 - Exact sync trigger for the play-state cursor copy at `0x0202BC0A`
+- Unit-state bit `0x1000` at `+0x0C` = DROPS LAST ITEM on death (Confirmed 2026-09-17: the longbow archer that drops read 0x1000, a non-dropper 0; 0x400000 marked units that had acted). Killing such a unit with a 5-item unit halts the game on a 6-entry item list (the unit's items in order, the drop last; A sends the highlighted entry to Merlinus at once, no confirm). The prompt text is NOT in the text buffer — detect it as an open menu with count = items+1 via `locateMenu`, receiver/dropper from the battle structs. `fe7_inventory_full` answers it.
 - Meaning of the remaining `0x00400000` state flag bits at unit `+0x0C` (bit 0 is known:
   selected/in motion)
 - The menu allocator — which slot a given menu lands in, and why it varies between runs
