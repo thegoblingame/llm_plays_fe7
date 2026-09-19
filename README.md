@@ -5,7 +5,7 @@ in the mGBA emulator — reading the game state out of RAM, deciding what to do,
 the controller.
 
 **If you are a fresh session, read this file, then `BACKLOG.md`, then `RAM.md`.**
-**If you are about to play the game, read `RUNBOOK.md`.**
+**If you are about to play the game, read `VICTORY_RUNBOOK.md` for one chapter, or `PLAYTHROUGH_RUNBOOK.md` for the whole-game run.**
 
 ---
 
@@ -35,7 +35,8 @@ One more piece lives outside both — the `memory-investigator` subagent definit
 | `BACKLOG.md` | **Start here after this file.** The ranked list of what we cannot do yet, split into memory work and tool work. |
 | `RAM.md` | The canonical memory map — addresses, struct layouts, formulas, and the method notes. ~1600 lines. Every claim is tagged Confirmed / Inferred / Unverified. |
 | `attempts/` | Working logs, one per investigation. Historical; the conclusions have been folded into `RAM.md`. |
-| `RUNBOOK.md` | The playbook for an actual playthrough — objective, the turn loop, and the recording discipline. Read it before starting a run. |
+| `VICTORY_RUNBOOK.md` / `SCOUTING_RUNBOOK.md` | The playbooks for one chapter — beat it, or scout it for tool gaps. Read one before starting a run. |
+| `PLAYTHROUGH_RUNBOOK.md` | The playbook for the whole-game run: one fresh session per chapter, driven by `playthrough/run.sh`. Summaries land in `playthrough/LOG.md`, save states in `playthrough/states/` (not committed). |
 | `runs/` | JSONL logs from playthroughs — see the feedback loop below. |
 | `misc/` | Grant's scratch space. **Do not read it**; it is deliberately excluded (see `CLAUDE.md`). |
 

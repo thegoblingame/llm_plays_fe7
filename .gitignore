@@ -59,3 +59,7 @@ htmlcov/
 # Run artifacts and scratch
 runs/videos/
 misc/
+# Playthrough: save states are binary, per-session MCP configs are generated
+playthrough/states/
+playthrough/sessions/*.mcp.json
+playthrough/STOP
