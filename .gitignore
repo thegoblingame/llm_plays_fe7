@@ -63,3 +63,8 @@ misc/
 playthrough/states/
 playthrough/sessions/*.mcp.json
 playthrough/STOP
+
+# Overlay: replay scratch, and portrait sprites (ripped assets, not ours to commit)
+overlay/.replay*/
+overlay/public/portraits/*.png
+overlay/chapter-override.txt

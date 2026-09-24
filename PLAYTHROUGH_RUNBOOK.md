@@ -135,11 +135,6 @@ something goes wrong". Three raw tools are **forbidden outright**: `mgba_load_st
 When in doubt, take the screenshot. It costs one call, changes nothing in the game, and the
 file is small.
 
-**Screenshots supplement memory; they do not replace it.** Game state — positions, HP,
-whose turn it is, what a unit can reach — still comes from `fe7_state` and friends, which are
-checkable. A screenshot tells you what is _displayed_: text, portraits, menus, the cursor.
-If a screenshot and a memory read disagree, trust the memory read for the next action.
-
 #### How to take one
 
 Always pass an explicit `path`. Omitting it writes to the system temp folder, where the file

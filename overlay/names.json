@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "Portraits and names are keyed by CLASS ID (hex, uppercase), not by the rNN roster byte.",
+    "The roster byte is an array position that compacts when a unit dies -- Sain was r02 in",
+    "Ch.3 and Kent is r02 from Ch.9 on -- so it is not a stable identity. In Lyn's tale every",
+    "character has a unique class except cls28 (Kent and Sain); Sain died in Ch.4, so cls28 is",
+    "Kent for the rest of this run. If that ever stops being true, add a bySlot override below.",
+    "",
+    "PROMOTION CHANGES THE CLASS ID. Wallace used his Knight Crest in Ch.10 and went from",
+    "cls14 (Knight) to cls16 (General), so he needs both entries. Any promotion from here on",
+    "needs the new class adding, or the unit shows up as a bare cls ID.",
+    "",
+    "Portrait files go in public/portraits/. A missing file falls back to a placeholder tile."
+  ],
+
+  "byClass": {
+    "02": { "name": "Lyn",     "portrait": "lyn.png" },
+    "28": { "name": "Kent",    "portrait": "kent.png" },
+    "32": { "name": "Florina", "portrait": "florina.png" },
+    "18": { "name": "Wil",     "portrait": "wil.png" },
+    "2E": { "name": "Rath",    "portrait": "rath.png" },
+    "41": { "name": "Nils",    "portrait": "nils.png" },
+    "1C": { "name": "Lucius",  "portrait": "lucius.png" },
+    "3C": { "name": "Matthew", "portrait": "matthew.png" },
+    "14": { "name": "Wallace", "portrait": "wallace.png" },
+    "16": { "name": "Wallace", "portrait": "wallace.png" },
+    "1D": { "name": "Serra",   "portrait": "serra.png" },
+    "20": { "name": "Erk",     "portrait": "erk.png" },
+    "05": { "name": "Dorcas",  "portrait": "dorcas.png" }
+  },
+
+  "bySlot": {}
+}
