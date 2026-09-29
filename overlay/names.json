@@ -1,33 +1,294 @@
 {
   "_comment": [
-    "Portraits and names are keyed by CLASS ID (hex, uppercase), not by the rNN roster byte.",
-    "The roster byte is an array position that compacts when a unit dies -- Sain was r02 in",
-    "Ch.3 and Kent is r02 from Ch.9 on -- so it is not a stable identity. In Lyn's tale every",
-    "character has a unique class except cls28 (Kent and Sain); Sain died in Ch.4, so cls28 is",
-    "Kent for the rest of this run. If that ever stops being true, add a bySlot override below.",
+    "Identity is keyed on CHARACTER ID (chNN on every unit line of fe7_state, hex, uppercase; the",
+    "key here is NN without the ch prefix). ENEMIES and GREEN lines carry it too since 2026-09-29.",
+    "It is (charPtr - 0x08BDCE18) / 0x34, verified against the ROM's own ID byte on 2026-09-27,",
+    "and it survives both promotion (which changes clsNN) and death-compaction (which changes rNN).",
     "",
-    "PROMOTION CHANGES THE CLASS ID. Wallace used his Knight Crest in Ch.10 and went from",
-    "cls14 (Knight) to cls16 (General), so he needs both entries. Any promotion from here on",
-    "needs the new class adding, or the unit shows up as a bare cls ID.",
+    "Several characters have TWO ids: one for Lyn's tale and one for the main game (Lyn is 03 and",
+    "2D, Kent 17 and 2F, ...). Both are listed. Bosses, generics and morphs are left out on",
+    "purpose: only playable characters are listed, so an ENEMIES or GREEN line whose chNN IS in",
+    "this table is a named character who can probably be recruited (Heath is ch20 as an enemy,",
+    "Guy ch06), and one whose chNN is missing is a boss or a generic.",
     "",
-    "Portrait files go in public/portraits/. A missing file falls back to a placeholder tile."
+    "byClass is the pre-chNN scheme and is only consulted when a line has no chNN, i.e. logs",
+    "written before 2026-09-27. bySlot overrides a specific array slot and beats byClass.",
+    "",
+    "Portrait files go in public/portraits/, lowercase (kent.png). A missing file falls back to a",
+    "placeholder tile, so they can be added one at a time."
   ],
-
-  "byClass": {
-    "02": { "name": "Lyn",     "portrait": "lyn.png" },
-    "28": { "name": "Kent",    "portrait": "kent.png" },
-    "32": { "name": "Florina", "portrait": "florina.png" },
-    "18": { "name": "Wil",     "portrait": "wil.png" },
-    "2E": { "name": "Rath",    "portrait": "rath.png" },
-    "41": { "name": "Nils",    "portrait": "nils.png" },
-    "1C": { "name": "Lucius",  "portrait": "lucius.png" },
-    "3C": { "name": "Matthew", "portrait": "matthew.png" },
-    "14": { "name": "Wallace", "portrait": "wallace.png" },
-    "16": { "name": "Wallace", "portrait": "wallace.png" },
-    "1D": { "name": "Serra",   "portrait": "serra.png" },
-    "20": { "name": "Erk",     "portrait": "erk.png" },
-    "05": { "name": "Dorcas",  "portrait": "dorcas.png" }
+  "byChar": {
+    "01": {
+      "name": "Eliwood",
+      "portrait": "eliwood.png"
+    },
+    "02": {
+      "name": "Hector",
+      "portrait": "hector.png"
+    },
+    "03": {
+      "name": "Lyn",
+      "portrait": "lyn.png",
+      "_note": "Lyn, Lyn's tale"
+    },
+    "04": {
+      "name": "Raven",
+      "portrait": "raven.png"
+    },
+    "05": {
+      "name": "Geitz",
+      "portrait": "geitz.png"
+    },
+    "06": {
+      "name": "Guy",
+      "portrait": "guy.png"
+    },
+    "07": {
+      "name": "Karel",
+      "portrait": "karel.png"
+    },
+    "08": {
+      "name": "Dorcas",
+      "portrait": "dorcas.png"
+    },
+    "09": {
+      "name": "Bartre",
+      "portrait": "bartre.png"
+    },
+    "0B": {
+      "name": "Oswin",
+      "portrait": "oswin.png"
+    },
+    "0D": {
+      "name": "Wil",
+      "portrait": "wil.png",
+      "_note": "Wil, Lyn's tale"
+    },
+    "0E": {
+      "name": "Rebecca",
+      "portrait": "rebecca.png"
+    },
+    "0F": {
+      "name": "Louise",
+      "portrait": "louise.png"
+    },
+    "10": {
+      "name": "Lucius",
+      "portrait": "lucius.png"
+    },
+    "11": {
+      "name": "Serra",
+      "portrait": "serra.png"
+    },
+    "12": {
+      "name": "Renault",
+      "portrait": "renault.png"
+    },
+    "13": {
+      "name": "Erk",
+      "portrait": "erk.png"
+    },
+    "14": {
+      "name": "Nino",
+      "portrait": "nino.png"
+    },
+    "15": {
+      "name": "Pent",
+      "portrait": "pent.png"
+    },
+    "16": {
+      "name": "Canas",
+      "portrait": "canas.png"
+    },
+    "17": {
+      "name": "Kent",
+      "portrait": "kent.png",
+      "_note": "Kent, Lyn's tale"
+    },
+    "18": {
+      "name": "Sain",
+      "portrait": "sain.png",
+      "_note": "Sain, Lyn's tale"
+    },
+    "19": {
+      "name": "Lowen",
+      "portrait": "lowen.png"
+    },
+    "1A": {
+      "name": "Marcus",
+      "portrait": "marcus.png"
+    },
+    "1B": {
+      "name": "Priscilla",
+      "portrait": "priscilla.png"
+    },
+    "1C": {
+      "name": "Rath",
+      "portrait": "rath.png",
+      "_note": "Rath, Lyn's tale"
+    },
+    "1D": {
+      "name": "Florina",
+      "portrait": "florina.png",
+      "_note": "Florina, Lyn's tale"
+    },
+    "1E": {
+      "name": "Fiora",
+      "portrait": "fiora.png"
+    },
+    "1F": {
+      "name": "Farina",
+      "portrait": "farina.png"
+    },
+    "20": {
+      "name": "Heath",
+      "portrait": "heath.png"
+    },
+    "21": {
+      "name": "Vaida",
+      "portrait": "vaida.png"
+    },
+    "22": {
+      "name": "Hawkeye",
+      "portrait": "hawkeye.png"
+    },
+    "23": {
+      "name": "Matthew",
+      "portrait": "matthew.png"
+    },
+    "24": {
+      "name": "Jaffar",
+      "portrait": "jaffar.png"
+    },
+    "25": {
+      "name": "Ninian",
+      "portrait": "ninian.png"
+    },
+    "26": {
+      "name": "Nils",
+      "portrait": "nils.png"
+    },
+    "27": {
+      "name": "Athos",
+      "portrait": "athos.png"
+    },
+    "28": {
+      "name": "Merlinus",
+      "portrait": "merlinus.png"
+    },
+    "29": {
+      "name": "Nils",
+      "portrait": "nils.png",
+      "_note": "Nils, final chapter"
+    },
+    "2C": {
+      "name": "Wallace",
+      "portrait": "wallace.png"
+    },
+    "2D": {
+      "name": "Lyn",
+      "portrait": "lyn.png",
+      "_note": "Lyn, main game"
+    },
+    "2E": {
+      "name": "Wil",
+      "portrait": "wil.png",
+      "_note": "Wil, main game"
+    },
+    "2F": {
+      "name": "Kent",
+      "portrait": "kent.png",
+      "_note": "Kent, main game"
+    },
+    "30": {
+      "name": "Sain",
+      "portrait": "sain.png",
+      "_note": "Sain, main game"
+    },
+    "31": {
+      "name": "Florina",
+      "portrait": "florina.png",
+      "_note": "Florina, main game"
+    },
+    "32": {
+      "name": "Rath",
+      "portrait": "rath.png",
+      "_note": "Rath, main game"
+    },
+    "33": {
+      "name": "Dart",
+      "portrait": "dart.png"
+    },
+    "34": {
+      "name": "Isadora",
+      "portrait": "isadora.png"
+    },
+    "36": {
+      "name": "Legault",
+      "portrait": "legault.png"
+    },
+    "37": {
+      "name": "Karla",
+      "portrait": "karla.png"
+    },
+    "38": {
+      "name": "Harken",
+      "portrait": "harken.png"
+    }
   },
-
+  "byClass": {
+    "02": {
+      "name": "Lyn",
+      "portrait": "lyn.png"
+    },
+    "28": {
+      "name": "Kent",
+      "portrait": "kent.png"
+    },
+    "32": {
+      "name": "Florina",
+      "portrait": "florina.png"
+    },
+    "18": {
+      "name": "Wil",
+      "portrait": "wil.png"
+    },
+    "2E": {
+      "name": "Rath",
+      "portrait": "rath.png"
+    },
+    "41": {
+      "name": "Nils",
+      "portrait": "nils.png"
+    },
+    "1C": {
+      "name": "Lucius",
+      "portrait": "lucius.png"
+    },
+    "3C": {
+      "name": "Matthew",
+      "portrait": "matthew.png"
+    },
+    "14": {
+      "name": "Wallace",
+      "portrait": "wallace.png"
+    },
+    "16": {
+      "name": "Wallace",
+      "portrait": "wallace.png"
+    },
+    "1D": {
+      "name": "Serra",
+      "portrait": "serra.png"
+    },
+    "20": {
+      "name": "Erk",
+      "portrait": "erk.png"
+    },
+    "05": {
+      "name": "Dorcas",
+      "portrait": "dorcas.png"
+    }
+  },
   "bySlot": {}
 }

@@ -1580,6 +1580,14 @@ Deployment also shows in the state flags at `+0x0C`:
 | `0x04210009` | benched, extra high bits — seen on 3 units, one with Str 0 / Skl 0 (a dancer/bard) |
 | `0x00000008` | one unit with Str 0, no items, `exp = 0xFF` |
 
+**`x != 0xFF` does NOT prove a unit is on the map — Confirmed** (2026-09-29, Hector Ch.13).
+The ten Lyn's-tale units (Lyn, Sain, Kent, Florina, Wil, Erk, Nils, Lucius, Rath, Wallace)
+sat in player slots 13–20, 23 and 25 with real-looking coordinates — Nils on the same tile as
+an enemy — no items, and `+0x0C = 0x00010009`. The ten units actually on the map all read
+`+0x0C = 0x00000000`. The coordinates are left over from an earlier map. `fe7_state` now
+requires `x != 0xFF` **and** bits 3 and 16 both clear. Bit 16 (`0x00010000`) = "away from the
+party" is Inferred from this one observation.
+
 **Bit 3 (`0x08`) = not deployed** is the reliable part (Inferred). The high half-word differs
 between modes (`0x0040....` in Lyn mode, `0x0020....` here), so it is **not** an allegiance
 field — do not use it to tell friend from foe. Use which array the unit is in for that.
@@ -1945,19 +1953,27 @@ file.
 sitting `0x34` apart; re-confirmed across a 29-unit roster in Ch.22, where consecutive
 character pointers were consistently `0x34`-aligned.
 
-By analogy with the class formula, `char ID = (char_ptr - 0x08BDCE18) / 0x34` (base derived
-from Lyn-mode Lyn: pointer `0x08BDCEB4`, known ID `0x03`). Division is exact on every pointer
-tested, **but this formula is Unverified** and there is a live contradiction:
+**`char ID = (char_ptr - 0x08BDCE18) / 0x34` — Confirmed** (2026-09-27). Read straight from
+ROM: for entries `0x00`–`0x07` and `0x2C`–`0x2F`, the struct's own ID byte at `+0x04` equals
+its table index every time. `fe7_state` prints it as `chNN` on every unit line — PLAYERS,
+ENEMIES and GREEN (the last two since 2026-09-29, so a recruitable enemy can be told from
+the generics of its class).
 
-> In Ch.22 the unit whose *class* is unmistakably Lyn's Lord (`0x08BE0204`, class `0x02` — a
-> class only Lyn has) carries character pointer `0x08BDD73C`, which the formula maps to ID
-> `0x2D`, **not** `0x03`. Either FE7 stores two separate character entries for Lyn (a
-> Lyn-mode version and a main-mode version), or the base is wrong. Unresolved — do not rely on
-> character IDs until this is settled.
+The earlier "contradiction" (Lyn's-tale Lyn at `0x08BDCEB4` → `0x03`, but Ch.22 Lyn at
+`0x08BDD73C` → `0x2D`) was the first explanation: **FE7 stores two character entries for
+Lyn**, `0x03` for her own tale and `0x2D` for the main game. Both have name text ID `0x04DE`,
+class `0x02` and portrait ID `0x16`. The same doubling applies to Kent (`0x17`/`0x2F`), Sain
+(`0x18`/`0x30`), Wil (`0x0D`/`0x2E`), Florina (`0x1D`/`0x31`) and Rath (`0x1C`/`0x32`), and
+Nils has a third entry (`0x29`) for the final chapter. The full playable list is in
+`overlay/names.json`.
 
 | Character ID | Who | Confidence |
 |---|---|---|
-| `0x03` | Lyn | Confirmed (name visible on screen) |
+| `0x03` | Lyn (Lyn's tale) | Confirmed (name visible on screen) |
+| `0x2D` | Lyn (main game) | Confirmed (Ch.22, only unit with class `0x02`) |
+| `0x0D` Wil, `0x10` Lucius, `0x1C` Rath, `0x1D` Florina, `0x23` Matthew, `0x26` Nils, `0x2C` Wallace | Lyn's tale party | Confirmed (live Ch.10 read, each matches its unique class) |
+| everything else in `overlay/names.json` | playable cast | Inferred from the public FE7 character table |
+| `0x20` | Heath | Confirmed (live read 2026-09-29: enemy slot 35, the unit under the cursor at (0,15), pointer `0x08BDD498`) |
 | `0x87`, `0x88` | Generic brigands | Unverified |
 
 ### The item table — `0x08BE222C` in ROM — Confirmed
