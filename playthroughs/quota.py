@@ -1,4 +1,4 @@
-"""Optional quota gate for playthrough/run.sh.
+"""Optional quota gate for playthroughs/run.sh.
 
 Prints one line:  ok            -> start the next session
                   wait <secs>   -> both/either rate-limit window is above THRESHOLD; sleep this long

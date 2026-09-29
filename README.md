@@ -36,8 +36,11 @@ One more piece lives outside both — the `memory-investigator` subagent definit
 | `RAM.md` | The canonical memory map — addresses, struct layouts, formulas, and the method notes. ~1600 lines. Every claim is tagged Confirmed / Inferred / Unverified. |
 | `attempts/` | Working logs, one per investigation. Historical; the conclusions have been folded into `RAM.md`. |
 | `VICTORY_RUNBOOK.md` / `SCOUTING_RUNBOOK.md` | The playbooks for one chapter — beat it, or scout it for tool gaps. Read one before starting a run. |
-| `PLAYTHROUGH_RUNBOOK.md` | The playbook for the whole-game run: one fresh session per chapter, driven by `playthrough/run.sh`. Summaries land in `playthrough/LOG.md`, save states in `playthrough/states/` (not committed). |
-| `runs/` | JSONL logs from playthroughs — see the feedback loop below. |
+| `PLAYTHROUGH_RUNBOOK.md` | The playbook for the whole-game run: one fresh session per chapter, driven by `playthroughs/run.sh`. |
+| `PLAYTHROUGH_STRATEGY_TEMPLATE.md` | Human-written strategy for the whole-game run, with a section per chapter (recruits pre-filled, space for agent notes). `run.sh` copies it into each new playthrough folder as `CURRENT_RUN_STRATEGY.md`, the only memory that carries between sessions. Edit the template, not a run's copy. |
+| `playthroughs/` | The loop script, and one dated folder per playthrough (`<YYYY-MM-DD_HH-MM>/`) holding its `CURRENT_RUN_STRATEGY.md`, `states/`, `screenshots/`, `sessions/`, `runs/` tool logs and `usage.tsv`. States are not committed. |
+| `archive/` | Logs, screenshots, sessions and states from playthroughs before the per-folder layout. Historical. |
+| `runs/` | JSONL logs from single-chapter runs — see the feedback loop below. Whole-game playthroughs log into their own folder's `runs/`. |
 | `misc/` | Grant's scratch space. **Do not read it**; it is deliberately excluded (see `CLAUDE.md`). |
 
 ---

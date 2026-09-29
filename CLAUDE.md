@@ -10,7 +10,7 @@ commands) live in `~/.claude/CLAUDE.md` and apply here too.
 
 - `README.md` — what this project is and how the two repos fit together. Read it first.
 - `VICTORY_RUNBOOK.md` / `SCOUTING_RUNBOOK.md` — read before playing a single chapter.
-- `PLAYTHROUGH_RUNBOOK.md` — read before (or as) a session of the whole-game run; `playthrough/run.sh` drives it.
+- `PLAYTHROUGH_RUNBOOK.md` — read before (or as) a session of the whole-game run; `playthroughs/run.sh` drives it; each launch gets its own `playthroughs/<date_time>/` folder.
 - `BACKLOG.md` — what we cannot do yet, ranked.
 - `RAM.md` — the canonical memory map. Every claim is tagged Confirmed / Inferred / Unverified.
 

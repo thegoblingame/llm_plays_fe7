@@ -2,20 +2,28 @@
 # One fresh Claude session per chapter, until the game is beaten, a session reports
 # LOST or STUCK, a STOP file appears, or MAX_SESSIONS is reached.
 #
-#   usage:  playthrough/run.sh [model] [effort]        e.g.  playthrough/run.sh fable medium
-#   stop:   touch playthrough/STOP    (takes effect between sessions; delete it to resume)
+#   usage:  playthroughs/run.sh [model] [effort]        e.g.  playthroughs/run.sh fable medium
+#   stop:   touch playthroughs/STOP    (takes effect between sessions; delete it to resume)
 #   env:    MAX_SESSIONS (default 45)  RETRY_WAIT seconds (default 900)  MAX_FAILS (default 6)
+#           PLAYTHROUGH_DIR to continue an existing playthrough folder instead of starting a
+#           new one (e.g. PLAYTHROUGH_DIR=playthroughs/2026-09-26_14-30).
 #           QUOTA_WAIT=1 to check plan usage before each session and sleep until the 5-hour /
 #           7-day window resets when either is at or above QUOTA_THRESHOLD (default 95). Off by
-#           default; see playthrough/quota.py.
+#           default; see playthroughs/quota.py.
 #
-# Each session gets PLAYTHROUGH_RUNBOOK.md on stdin with a one-line header naming its tag,
-# its own MCP config (so the fe7 tool log lands in runs/playthrough-<date>-<tag>.jsonl
+# Every launch of this script is one PLAYTHROUGH, and gets its own folder named for the moment
+# it started:  playthroughs/<YYYY-MM-DD_HH-MM>/   containing
+#   CURRENT_RUN_STRATEGY.md   the run's strategy file: a copy of PLAYTHROUGH_STRATEGY_TEMPLATE.md made
+#                  when the folder is created, read by every session and written to at the end of each
+#   states/        save states, one per won chapter
+#   sessions/      stream-json transcript and MCP config per session
+#   screenshots/   every screenshot the agent takes
+#   runs/          the fe7 tool log per session, playthrough-<date>-<tag>.jsonl
+#   usage.tsv      token usage and cost per session
+#
+# Each session gets PLAYTHROUGH_RUNBOOK.md on stdin with a one-line header naming its tag and
+# its playthrough folder, its own MCP config (so the fe7 tool log lands in that folder's runs/
 # instead of the single file hardcoded in ~/.claude.json), and a fresh MCP server process.
-# The full stream-json transcript is kept in playthrough/sessions/<tag>.jsonl.
-#
-# After each session the token usage and cost from the transcript's final "result" record are
-# printed and appended to playthrough/usage.tsv, with running totals for the whole run.
 #
 # The session's last line must be PLAYTHROUGH_RESULT=WON|LOST|STUCK (see the runbook).
 # WON  -> next session.   LOST / STUCK -> halt for the human.
@@ -23,7 +31,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"          # llm_plays_fe7
-PT="$ROOT/playthrough"
+PT="$ROOT/playthroughs"
 MCP_SERVER="$(cd "$ROOT/../mcp-mgba" && pwd)/dist/index.js"
 # Paths handed to node must be Windows-style: Git Bash's /c/Users/... is read by node as C:\c\Users\...
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
@@ -34,7 +42,7 @@ RETRY_WAIT="${RETRY_WAIT:-900}"
 MAX_FAILS="${MAX_FAILS:-6}"
 QUOTA_WAIT="${QUOTA_WAIT:-0}"
 
-# Optional quota gate. With QUOTA_WAIT=1, ask playthrough/quota.py before each session and
+# Optional quota gate. With QUOTA_WAIT=1, ask playthroughs/quota.py before each session and
 # sleep as long as it says. If the check itself fails, say so and carry on rather than stall.
 wait_for_quota() {
   [[ "$QUOTA_WAIT" == "1" ]] || return 0
@@ -69,14 +77,24 @@ print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("ca
 
 [[ -f "$MCP_SERVER" ]] || { echo "ERROR: $MCP_SERVER not found — run npm run build in mcp-mgba" >&2; exit 1; }
 [[ -f "$ROOT/PLAYTHROUGH_RUNBOOK.md" ]] || { echo "ERROR: PLAYTHROUGH_RUNBOOK.md missing" >&2; exit 1; }
-mkdir -p "$PT/states" "$PT/sessions" "$ROOT/runs"
-[[ -f "$PT/LOG.md" ]] || printf '# Playthrough log\n\nOne entry per session, appended by the agent at the end of each chapter.\n' > "$PT/LOG.md"
+[[ -f "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" ]] || { echo "ERROR: PLAYTHROUGH_STRATEGY_TEMPLATE.md missing" >&2; exit 1; }
+# The playthrough folder: a new one per launch, named for the start time, unless the human
+# points PLAYTHROUGH_DIR at an existing one to continue it.
+if [[ -n "${PLAYTHROUGH_DIR:-}" ]]; then
+  RUN="$(cd "$PLAYTHROUGH_DIR" 2>/dev/null && pwd)" || { echo "ERROR: PLAYTHROUGH_DIR=$PLAYTHROUGH_DIR does not exist" >&2; exit 1; }
+else
+  RUN="$PT/$(date +%F_%H-%M)"
+fi
+mkdir -p "$RUN/states" "$RUN/sessions" "$RUN/screenshots" "$RUN/runs"
+# The run's strategy file: a fresh copy of the template for a new playthrough, left alone when continuing one.
+[[ -f "$RUN/CURRENT_RUN_STRATEGY.md" ]] || cp "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" "$RUN/CURRENT_RUN_STRATEGY.md"
+echo "--- playthrough folder: $RUN"
 
 # Continue numbering from the last session on disk, so a restarted loop does not reuse tags.
-n=$(ls "$PT/sessions" 2>/dev/null | grep -oE '^s[0-9]+' | sed 's/^s//' | sort -n | tail -1)
+n=$(ls "$RUN/sessions" 2>/dev/null | grep -oE '^s[0-9]+' | sed 's/^s//' | sort -n | tail -1)
 n=${n:-0}
 fails=0
-USAGE_TSV="$PT/usage.tsv"
+USAGE_TSV="$RUN/usage.tsv"
 [[ -f "$USAGE_TSV" ]] || printf 'date\ttag\tresult\tinput\tcache_write\tcache_read\toutput\tthinking\tcost_usd\tturns\tduration_s\n' > "$USAGE_TSV"
 tot_in=0 tot_cw=0 tot_cr=0 tot_out=0 tot_cost=0
 
@@ -88,16 +106,16 @@ while :; do
   wait_for_quota
   tag=$(printf 's%02d' "$n")
   today=$(date +%F)
-  runlog="$ROOT/runs/playthrough-${today}-${tag}.jsonl"
-  cfg="$PT/sessions/${tag}.mcp.json"
-  transcript="$PT/sessions/${tag}.jsonl"
+  runlog="$RUN/runs/playthrough-${today}-${tag}.jsonl"
+  cfg="$RUN/sessions/${tag}.mcp.json"
+  transcript="$RUN/sessions/${tag}.jsonl"
 
   printf '{"mcpServers":{"mgba":{"type":"stdio","command":"node","args":["%s"],"env":{"FE7_RUN_LOG":"%s"}}}}\n' \
     "$(winpath "$MCP_SERVER")" "$(winpath "$runlog")" > "$cfg"
 
   echo "--- $(date '+%F %T') | $tag starting (model=$MODEL effort=$EFFORT)"
   {
-    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag"
+    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, states/, sessions/, screenshots/ and runs/ inside). The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")"
     cat "$ROOT/PLAYTHROUGH_RUNBOOK.md"
   } | (
     cd "$ROOT" && claude -p \
@@ -127,7 +145,7 @@ while :; do
     WON)
       fails=0 ;;
     LOST|STUCK)
-      echo "Session $tag reported $result. Halting for the human. See $PT/LOG.md and $transcript."
+      echo "Session $tag reported $result. Halting for the human. See $RUN/CURRENT_RUN_STRATEGY.md and $transcript."
       break ;;
     *)
       fails=$((fails + 1))

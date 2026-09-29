@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /**
  * Replays a recorded run log so the overlay can be built and tuned without the
- * emulator, without OBS and without a live session. Twelve real chapters are
- * already on disk in runs/, which is far better test data than anything faked.
+ * emulator, without OBS and without a live session. Real chapters are already on
+ * disk (the newest playthrough's runs/, or archive/old_logs/), which is far better
+ * test data than anything faked.
  *
  *   # terminal 1
  *   OVERLAY_RUNS_DIR=overlay/.replay node overlay/server.mjs
  *   # terminal 2
  *   node overlay/replay.mjs                       newest log, 20x speed
- *   node overlay/replay.mjs runs/....jsonl 50     a specific log, faster
+ *   node overlay/replay.mjs playthroughs/<dir>/runs/....jsonl 50     a specific log, faster
  *
- * It writes into overlay/.replay/ rather than runs/, so a rehearsal never leaves
+ * It writes into overlay/.replay/ rather than a playthrough's runs/, so a rehearsal never leaves
  * a fake run log behind for the backlog triage to trip over.
  */
 import { readdir, readFile, stat, mkdir, writeFile, appendFile } from "node:fs/promises";
@@ -25,7 +26,11 @@ const OUT_FILE = join(OUT_DIR, "playthrough-replay.jsonl");
 const MAX_GAP_MS = 2500; // a long think or a slow enemy phase should not stall the rehearsal
 
 async function newestLog() {
-  const dir = join(ROOT, "runs");
+  // Newest dated folder under playthroughs/ (they sort by name), then its runs/.
+  const pts = join(ROOT, "playthroughs");
+  const dirs = (await readdir(pts, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  if (!dirs.length) throw new Error("no playthrough folders in " + pts);
+  const dir = join(pts, dirs[dirs.length - 1], "runs");
   const files = (await readdir(dir)).filter((f) => /^playthrough-.*\.jsonl$/.test(f));
   if (!files.length) throw new Error("no playthrough logs in " + dir);
   const stamped = await Promise.all(

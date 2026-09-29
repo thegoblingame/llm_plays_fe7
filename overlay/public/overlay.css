@@ -4,8 +4,11 @@
  * 250px a side that leaves 1420x1080 for the game. Both strips are the same
  * width, and the capture has to sit exactly in the gap or it covers a panel.
  *
- * Left:  chapter at the top, reasoning feed glued to the bottom.
+ * Left:  milk carton in the bottom corner, reasoning feed stacked above it.
+ *        The carton's white panel carries the UNRECRUITED units, two columns.
  * Right: the roster, full height.
+ * Centre: the gravestone, bottom-middle over the game capture. Its face
+ *        carries the DEAD units, two rows.
  */
 
 :root {
@@ -18,6 +21,23 @@
      preserved (object-fit: contain), nothing is cropped, and a file smaller than
      the box is not blown up. The one knob for portrait size. */
   --portrait-size: 54px;
+
+  /* The two decorations. Each keeps its own aspect ratio; width is the knob.
+     milk.png is 261x562, rip.png is 882x221. */
+  --milk-width: 261px;
+  --rip-width: 882px;
+
+  /* Where the tile grids sit on each image, as fractions of the image, so they
+     track --milk-width / --rip-width. Measured off the PNGs: the carton's white
+     panel below "MISSING", and the stone face below "In loving memory". */
+  --milk-grid-left: 27.5%;
+  --milk-grid-top: 31%;
+  --milk-grid-width: 66.5%;
+  --milk-grid-height: 64%;
+  --rip-grid-left: 11%;
+  --rip-grid-top: 32%;
+  --rip-grid-width: 78%;
+  --rip-grid-height: 60%;
 
   --ink: #eceae4;
   --ink-dim: #9aa2ae;
@@ -80,9 +100,9 @@ body {
   justify-content: flex-start;
 }
 
-/* Chapter is fixed at the top of the left strip; the feed takes what is left
-   under it. Both clip rather than running off the bottom of the screen. */
-.chapter {
+/* The milk carton is fixed at the bottom of the left strip; the feed takes what
+   is left above it and clips rather than running off the top. */
+.milk {
   flex: none;
 }
 
@@ -91,38 +111,100 @@ body {
   overflow: hidden;
 }
 
-/* Pinned to the bottom of the strip and sized by its contents, so it grows
-   upward as lines arrive rather than standing as a tall half-empty box. It
-   still yields to the roster: a big army shrinks it and the oldest lines clip. */
+/* Pinned just above the milk carton and sized by its contents, so it grows
+   upward as lines arrive rather than standing as a tall half-empty box. The
+   carton never shrinks, so a long feed clips its oldest lines instead. */
 .feed {
   flex: 0 1 auto;
   margin-top: auto;
 }
 
-/* ------------------------------------------------------------ chapter */
+/* ------------------------------------------------------------ decorations */
 
-.chapter {
-  padding: 11px 13px 12px;
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-left: 3px solid var(--accent);
-  border-radius: 4px;
+/* Bottom-left corner: last in the left strip's flex column, so it sits at the
+   very bottom and pushes the feed up by its own height plus --gap. The PNG is
+   a background so the tile grid can be laid over it. */
+.milk {
+  position: relative;
+  width: var(--milk-width);
+  max-width: 100%;
+  aspect-ratio: 261 / 562;
+  align-self: flex-start;
+  background: url("/milk.png") no-repeat;
+  background-size: 100% 100%;
 }
 
-.chapter-num {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent);
+.milk .tiles {
+  left: var(--milk-grid-left);
+  top: var(--milk-grid-top);
+  width: var(--milk-grid-width);
+  height: var(--milk-grid-height);
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* two columns; rows grow */
 }
 
-.chapter-title {
-  margin-top: 3px;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+/* Bottom-middle: centred in the gap between the two strips, over the game
+   capture, with the same bottom inset as the strips' padding. */
+.rip {
+  position: absolute;
+  bottom: var(--pad);
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--rip-width);
+  max-width: calc(1920px - 2 * var(--col-width) - 2 * var(--pad));
+  aspect-ratio: 882 / 221;
+  background: url("/rip.png") no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.rip .tiles {
+  left: var(--rip-grid-left);
+  top: var(--rip-grid-top);
+  width: var(--rip-grid-width);
+  height: var(--rip-grid-height);
+  grid-template-rows: repeat(2, minmax(0, 1fr)); /* two rows; columns set by JS */
+}
+
+/* ------------------------------------------------------------ tiles */
+
+/* A portrait with the name under it, filled row by row (left to right, then
+   the next row) so the order units were written to roster.json is the order
+   they read. fitTiles() in overlay.js shrinks --portrait-size / --row-scale
+   on the container until the whole list fits. */
+.tiles {
+  position: absolute;
+  display: grid;
+  gap: 4px 6px;
+  align-content: start;
+  justify-items: center;
+  overflow: hidden;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Both images are light where the tiles sit, so the names go dark here. */
+.tile-name {
+  max-width: 100%;
+  font-size: calc(13px * var(--row-scale, 1));
+  font-weight: 700;
+  line-height: 1.1;
+  color: #16171a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tiles .portrait.placeholder {
+  color: #4a4f58;
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.18);
 }
 
 /* ------------------------------------------------------------ roster */

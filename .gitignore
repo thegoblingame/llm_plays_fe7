@@ -59,10 +59,11 @@ htmlcov/
 # Run artifacts and scratch
 runs/videos/
 misc/
-# Playthrough: save states are binary, per-session MCP configs are generated
-playthrough/states/
-playthrough/sessions/*.mcp.json
-playthrough/STOP
+# Playthroughs: save states are binary, per-session MCP configs are generated
+playthroughs/*/states/
+playthroughs/*/sessions/*.mcp.json
+playthroughs/STOP
+archive/old_states/
 
 # Overlay: replay scratch, and portrait sprites (ripped assets, not ours to commit)
 overlay/.replay*/

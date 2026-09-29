@@ -1,0 +1,1 @@
+{"mcpServers":{"mgba":{"type":"stdio","command":"node","args":["C:/Users/khaaa/Desktop/fe7_llm_experiments/mcp-mgba/dist/index.js"],"env":{"FE7_RUN_LOG":"C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/runs/playthrough-2026-09-19-s08.jsonl"}}}}

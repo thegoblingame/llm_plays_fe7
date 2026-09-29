@@ -2,9 +2,11 @@
 /**
  * Stream overlay server for the FE7 playthrough.
  *
- * Reads two things the run already writes, and writes nothing itself:
+ * Reads two things the run already writes, and writes nothing itself, both inside the
+ * NEWEST playthrough folder, playthroughs/<YYYY-MM-DD_HH-MM>/ (folders sort by name):
  *   runs/playthrough-<date>-<tag>.jsonl     every fe7_* call, appended per call
- *   playthrough/states/<s>_ch<N>_<slug>.ss  named for the chapter being played
+ *   states/<s>_ch<N>_<slug>.ss              named for the chapter being played
+ * OVERLAY_PLAYTHROUGH_DIR pins a specific playthrough folder instead of the newest.
  *
  * It is a pure reader. It cannot touch the emulator, the MCP server or the agent,
  * which is the point: a 40-minute chapter is not worth risking for an overlay.
@@ -20,12 +22,26 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(HERE); // llm_plays_fe7
+const PLAYTHROUGHS_DIR = join(ROOT, "playthroughs");
+
+// The playthrough folder being followed: OVERLAY_PLAYTHROUGH_DIR if set, else the newest
+// dated folder under playthroughs/. Resolved on every call so an overlay left running
+// follows a playthrough launched after it started.
+async function playthroughDir() {
+  if (process.env.OVERLAY_PLAYTHROUGH_DIR) return process.env.OVERLAY_PLAYTHROUGH_DIR;
+  const entries = await readdir(PLAYTHROUGHS_DIR, { withFileTypes: true });
+  const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  if (!dirs.length) throw new Error("no playthrough folders in " + PLAYTHROUGHS_DIR);
+  return join(PLAYTHROUGHS_DIR, dirs[dirs.length - 1]);
+}
 // OVERLAY_RUNS_DIR points the tailer somewhere else; replay.mjs uses it so a
-// rehearsal never drops a fake run log into runs/, which gets triaged for real.
-const RUNS_DIR = process.env.OVERLAY_RUNS_DIR
-  ? process.env.OVERLAY_RUNS_DIR
-  : join(ROOT, "runs");
-const STATES_DIR = join(ROOT, "playthrough", "states");
+// rehearsal never drops a fake run log into a real playthrough's runs/.
+async function runsDir() {
+  return process.env.OVERLAY_RUNS_DIR ? process.env.OVERLAY_RUNS_DIR : join(await playthroughDir(), "runs");
+}
+async function statesDir() {
+  return join(await playthroughDir(), "states");
+}
 const PUBLIC_DIR = join(HERE, "public");
 const OVERRIDE_FILE = join(HERE, "chapter-override.txt");
 const PORT = Number(process.env.OVERLAY_PORT || 8777);
@@ -38,42 +54,45 @@ const FEED_MAX = 10; // reason lines kept on screen
 
 const state = {
   chapter: { num: null, title: null },
-  units: [], // { slot, roster, cls, name, portrait, level, hp, maxHp }
+  units: [], // { slot, roster, charId, cls, name, portrait, level, hp, maxHp }
   feed: [], // { id, t, tool, text }
+  dead: [], // { name, portrait }  from roster.json, in the order written
+  unrecruited: [], // { name, portrait }  ditto
   source: null, // which log file we are tailing
   lastEventAt: null, // ISO time of the newest log record seen
 };
 
-let names = { byClass: {}, bySlot: {} };
+let names = { byChar: {}, byClass: {}, bySlot: {} };
 let feedSeq = 0;
 let dirty = false;
 
 async function loadNames() {
   try {
     const raw = JSON.parse(await readFile(join(HERE, "names.json"), "utf8"));
-    names = { byClass: raw.byClass || {}, bySlot: raw.bySlot || {} };
+    names = { byChar: raw.byChar || {}, byClass: raw.byClass || {}, bySlot: raw.bySlot || {} };
   } catch (e) {
     console.warn("names.json unreadable, falling back to class IDs:", e.message);
   }
 }
 
-/** Identity is keyed on class, with a per-slot escape hatch. See names.json. */
-function identify(slot, cls) {
+/**
+ * Identity, in order of trust: character ID (chNN, printed by fe7_state since
+ * 2026-09-27 -- stable across promotion and roster compaction), then a per-slot
+ * override, then class ID (the pre-chNN scheme, kept so older logs still name
+ * Lyn's-tale units). See names.json.
+ */
+function identify(slot, charId, cls) {
   return (
+    (charId && names.byChar?.[charId]) ||
     names.bySlot?.[String(slot)] ||
-    names.byClass?.[cls] || { name: "cls" + cls, portrait: null }
+    names.byClass?.[cls] || { name: charId ? "ch" + charId : "cls" + cls, portrait: null }
   );
 }
 
-// ---------------------------------------------------------------- parsing
-//
-// Four shapes carry player HP. fe7_state is authoritative once a turn; the other
-// three are what keeps the bars moving during a four-minute enemy phase.
-
-// #0 r01 cls02 Lv8 (4,3) HP21/21 S5 ...   (full)
-// #0 r01 cls02 (4,3) 21/21                (brief: no Lv, no HP prefix)
+// "#0 r01 ch2D cls02 Lv1 (0,0) HP18/24 ..." -- rNN and chNN are each optional:
+// brief lines omit rNN, and logs from before 2026-09-27 have no chNN at all.
 const UNIT_RE =
-  /^\s*#(\d+)\s+r([0-9A-Fa-f]{2})\s+cls([0-9A-Fa-f]{2})(?:\s+Lv(\d+))?\s+\(\d+,\d+\)\s+(?:HP)?(\d+)\/(\d+)/;
+  /^\s*#(\d+)\s+(?:r([0-9A-Fa-f]{2})\s+)?(?:ch([0-9A-Fa-f]{2})\s+)?cls([0-9A-Fa-f]{2})(?:\s+Lv(\d+))?\s+\(\d+,\d+\)\s+(?:HP)?(\d+)\/(\d+)/;
 
 /** The PLAYERS block of an fe7_state dump: a full, authoritative roster. */
 function applyPlayersBlock(text) {
@@ -88,19 +107,21 @@ function applyPlayersBlock(text) {
     const m = UNIT_RE.exec(line);
     if (!m) continue;
     const slot = Number(m[1]);
-    const cls = m[3].toUpperCase();
+    const charId = m[3] ? m[3].toUpperCase() : null;
+    const cls = m[4].toUpperCase();
     const prev = state.units.find((u) => u.slot === slot);
-    const id = identify(slot, cls);
+    const id = identify(slot, charId, cls);
     units.push({
       slot,
-      roster: m[2].toUpperCase(),
+      roster: m[2] ? m[2].toUpperCase() : prev?.roster ?? null,
+      charId,
       cls,
       name: id.name,
       portrait: id.portrait,
       // brief mode omits the level; keep the last one we knew rather than blanking it
-      level: m[4] ? Number(m[4]) : prev?.level ?? null,
-      hp: Number(m[5]),
-      maxHp: Number(m[6]),
+      level: m[5] ? Number(m[5]) : prev?.level ?? null,
+      hp: Number(m[6]),
+      maxHp: Number(m[7]),
     });
   }
   if (!units.length) return false;
@@ -235,6 +256,7 @@ async function refreshChapter() {
     }
   }
   try {
+    const STATES_DIR = await statesDir();
     const files = (await readdir(STATES_DIR)).filter((f) => f.endsWith(".ss"));
     if (!files.length) return;
     const stamped = await Promise.all(
@@ -249,12 +271,75 @@ async function refreshChapter() {
   }
 }
 
+// ---------------------------------------------------------------- roster.json
+
+/**
+ * The two lists the agent maintains by hand at the end of each chapter:
+ *
+ *   { "dead": ["Sain"], "unrecruited": ["Dorcas"] }
+ *
+ * in roster.json at the top of the playthrough folder, next to
+ * CURRENT_RUN_STRATEGY.md. Names, not IDs: an unrecruited unit never appears in
+ * any tool output, so a name is all the agent has for it. Each name is resolved
+ * to a portrait through names.json; a name that is not there falls back to
+ * <name>.png so a new character still works once the file is dropped in.
+ * Re-read on every rescan, so an edit shows up within RESCAN_MS.
+ */
+let rosterRaw = null;
+
+function portraitFor(name) {
+  const key = name.toLowerCase();
+  for (const table of [names.byChar, names.byClass]) {
+    for (const entry of Object.values(table || {})) {
+      if (entry?.name?.toLowerCase() === key && entry.portrait) return entry.portrait;
+    }
+  }
+  return key.replace(/[^a-z0-9_-]/g, "") + ".png";
+}
+
+function rosterEntries(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const item of list) {
+    const name = typeof item === "string" ? item : item?.name;
+    if (!name || typeof name !== "string") continue;
+    const portrait =
+      typeof item === "object" && item?.portrait ? item.portrait : portraitFor(name.trim());
+    out.push({ name: name.trim(), portrait });
+  }
+  return out;
+}
+
+async function refreshRoster() {
+  let raw = null;
+  try {
+    raw = await readFile(join(await playthroughDir(), "roster.json"), "utf8");
+  } catch {
+    /* no playthrough folder yet, or no roster.json in it: both lists stay empty */
+  }
+  if (raw === rosterRaw) return;
+  rosterRaw = raw;
+  let parsed = {};
+  if (raw != null) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      console.warn("roster.json unreadable, keeping the last good lists:", e.message);
+      return;
+    }
+  }
+  state.dead = rosterEntries(parsed.dead);
+  state.unrecruited = rosterEntries(parsed.unrecruited);
+  dirty = true;
+}
+
 // ---------------------------------------------------------------- tailing
 
 let current = null; // { path, offset, buffer }
 
 async function newestLog() {
   try {
+    const RUNS_DIR = await runsDir();
     const files = (await readdir(RUNS_DIR)).filter((f) => /^playthrough-.*\.jsonl$/.test(f));
     if (!files.length) return null;
     const stamped = await Promise.all(
@@ -323,6 +408,7 @@ async function rescan() {
   const newest = await newestLog();
   if (newest && newest !== current?.path) attach(newest);
   await refreshChapter();
+  await refreshRoster();
 }
 
 // ---------------------------------------------------------------- serving
@@ -410,7 +496,7 @@ setInterval(() => {
   }
 }, POLL_MS);
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, "127.0.0.1", async () => {
   console.log("overlay on http://localhost:" + PORT + "  (point an OBS Browser Source at it)");
-  console.log("watching " + RUNS_DIR);
+  console.log("watching " + (await runsDir()));
 });

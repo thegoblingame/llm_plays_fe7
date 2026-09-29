@@ -12,24 +12,27 @@ campaign, and the only thing that matters is getting as far into the game as pos
 
 ## The shape of the run
 
-**The campaign is Lyn's tale on Hard Mode.** The human started it from the prologue chapter
-of Lyn's story and has already pressed through the opening cutscenes, so the first session
-begins on that chapter.
-
 You are **one session in a chain**. The chain works like this:
 
-- A loop script (`playthrough/run.sh`) starts a **fresh Claude session for every chapter**.
-  Each session gets this runbook and a session tag (`s01`, `s02`, …) and nothing else.
+- A loop script (`playthroughs/run.sh`) starts a **fresh Claude session for every chapter**.
+  Each session gets this runbook, a session tag (`s01`, `s02`, …) and the path of its
+  **playthrough folder** (see "Your playthrough folder" below), and nothing else.
 - Your session's job is **the chapter that is loaded right now**. Beat it, hand the game
   over at the start of the next chapter, write a short summary, and exit. The loop reads
   your result and starts the next session on the next chapter.
-- **Nothing carries between sessions except the game itself and `playthrough/LOG.md`**, the
-  file of end-of-chapter summaries. No conversation history, no scratch notes. The summary
-  you write at the end is the only memory the next session has of your chapter.
+- **Nothing carries between sessions except the game itself, `CURRENT_RUN_STRATEGY.md`
+  and `roster.json`** in the playthrough folder. No conversation history, no scratch notes. That file starts as
+  a copy of `PLAYTHROUGH_STRATEGY_TEMPLATE.md` at the repo root: general strategy written by the human, plus one
+  section per chapter with the chapter's recruitable units pre-filled and room for you to
+  record what you learned. Every session reads it before playing and writes into it at the
+  end, so what you write there is the only memory the next session has of your chapter —
+  and it is the only memory a session on a **later attempt at the same chapter** has of
+  yours.
 - **You might be starting mid-chapter.** If the previous session died before finishing —
   crashed, hit a limit, timed out — the loop starts a new one on the same chapter, wherever
   the game was left. `fe7_state` tells you the turn; treat it as your starting point. The
-  last entry in `LOG.md` tells you which chapter you are on.
+  chapter sections in `CURRENT_RUN_STRATEGY.md` tell you which chapter you are on: the last
+  one with notes filled in is the previous session's, and yours is the next.
 
 The human is not watching in real time. There is no one to ask. Decide, act, and report.
 
@@ -42,13 +45,14 @@ The human is not watching in real time. There is no one to ask. Decide, act, and
    can manage. Every unit that dies here is gone for the rest of the campaign, so a loss is
    not a local setback the way it is on a one-chapter run. Play for the long game.
 2. **Hand over cleanly.** When the chapter is won, press through the ending events until the
-   next chapter has loaded, **save a state**, append a **summary** to `playthrough/LOG.md`,
-   and end with the result line. All three are described below.
+   next chapter has loaded, **save a state**, fill in **your chapter's section** of the
+   playthrough folder's `CURRENT_RUN_STRATEGY.md`, and end with the result line. All three
+   are described below.
 
 **You are not taking notes.** `fe7_note` exists as a tool; do not call it. Do not record tool
 gaps, do not log screenshots, do not keep a running journal. The automatic log captures
-every `fe7_*` call already. The only writing you do all session is the chapter summary at
-the end.
+every `fe7_*` call already. The only writing you do all session is in
+`CURRENT_RUN_STRATEGY.md`, at the end.
 
 Play to win. Take risks when the odds favour them and avoid them when they do not, the way a
 careful player would. Free experiments are fine — a refused attack costs nothing, a menu
@@ -57,30 +61,69 @@ probe costs nothing — but do not spend a unit or a turn to see what a tool say
 **Never pause to ask permission.** Not before a risky move, not before something that might
 lose a unit. Decide, act, and move on.
 
-Unit deaths happen. Losing a chapter can happen. Never report a loss as though it were
-shameful; report it as what happened, say what you would do differently, and stop.
+Unit deaths happen. Losing a chapter can happen. A loss is not shameful and it does not end
+the run: get back into the chapter, change what did not work, and keep playing. Your job is
+to get as far into the game as possible.
 
 ### What actually ends a chapter
 
-Two things, and they are the constraints you plan around:
+Three things, and they are the constraints you plan around:
 
 - **A lord dies.** Lyn, Eliwood, or Hector. Whichever of them the chapter has deployed.
 - **A unit you are required to protect dies**, on a chapter whose objective is to defend
   someone.
 
-Everything else — any other unit dying, a turn spent badly — is a setback, not the end. If
-the chapter is lost, say so plainly, write the summary, report `LOST`, and stop. **Do not
-load a save state and do not restart the chapter.** The human decides what happens next.
+Everything else is a setback, not the end. If the chapter is lost, play it again: see "When the chapter is lost" below.
+
+---
+
+## Your playthrough folder
+
+A **playthrough** is one launch of the loop: one or more chapters played in a single
+sequence. Every playthrough has its own folder under `playthroughs/`, named for the date and
+time it started, and **everything a session writes goes inside that folder**:
+
+```
+C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthroughs/<YYYY-MM-DD_HH-MM>/
+  CURRENT_RUN_STRATEGY.md   strategy and per-chapter notes — the only memory between sessions
+  roster.json    who has died and who you failed to recruit, for the stream overlay (see "Ending the session")
+  states/        save states, one per won chapter
+  screenshots/   every screenshot you take
+  sessions/      transcripts and MCP configs (written by the loop, not by you)
+  runs/          the fe7 tool log (written by the MCP server, not by you)
+  usage.tsv      token usage per session (written by the loop, not by you)
+```
+
+**Which folder is yours:**
+
+- **Started by the loop:** the one-line header above this runbook names your playthrough
+  folder. It already exists with `CURRENT_RUN_STRATEGY.md` and the subfolders inside. Use
+  it and nothing else.
+  Never create a second folder, and never write into another playthrough's folder.
+- **Started by hand, with no folder named in your prompt:** you are the first session of a
+  new playthrough. **Create the folder yourself before anything else**, named for the
+  current date and time in the form `YYYY-MM-DD_HH-MM` (24-hour clock, no colons), with
+  `states/` and `screenshots/` inside it, and **copy the template**
+  `llm_plays_fe7/PLAYTHROUGH_STRATEGY_TEMPLATE.md` into it as `CURRENT_RUN_STRATEGY.md`. Then
+  continue as below.
+
+Everywhere this runbook says "the playthrough folder", it means this folder. Old playthroughs
+live under `archive/`; never read from or write to them.
 
 ---
 
 ## Before you start
 
-1. **Read `playthrough/LOG.md`.** It is short. The last entry tells you which chapter this
-   is, who is alive, who is weak, and anything the previous session wanted you to know. If
-   the file has no entries, you are the first session.
+1. **Read `CURRENT_RUN_STRATEGY.md` in the playthrough folder.** Read the general strategy
+   and "Broad strategy notes" at the top, then find **your chapter's section**: the first
+   one whose "Agent notes" are still empty, or, if you are re-attempting a chapter, the one
+   whose `attempts` counter is already above zero and whose notes describe a loss. The
+   chapter sections before yours tell you who is alive, who is weak, and anything a previous
+   session wanted you to know. Your own section holds the chapter's **recruitable units and
+   how to recruit them**, pre-filled by the human, and any notes from earlier attempts. If
+   every section is still blank, you are the first session.
 2. `fe7_state` — confirm you get a battlefield with units in it. If turn is 0 and no units
-   are listed, no chapter is loaded; report `STUCK` (see "Ending the session") and stop.
+   are listed, no chapter is loaded; follow "When you get stuck" to get into the chapter.
 3. Check the phase is `player`. If not, `fe7_wait`.
 4. If anything looks strange, `fe7_unstick` before pressing anything.
 5. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up.** No tool
@@ -139,17 +182,16 @@ file is small.
 
 Always pass an explicit `path`. Omitting it writes to the system temp folder, where the file
 will be lost, and passing an existing path overwrites it silently. Save every screenshot into
-this repo's `screenshots/` folder, which already exists, with a name that says when and why:
+the playthrough folder's `screenshots/` subfolder, with a name that says when and why:
 
 ```
-screenshots/<YYYY-MM-DD>_<session>_ch<chapter>_t<turn>_<what>.png
+<playthrough folder>/screenshots/<YYYY-MM-DD>_<session>_ch<chapter>_t<turn>_<what>.png
 ```
 
-For example `screenshots/2026-09-20_s03_ch12_t03_boss-forecast.png` or
-`screenshots/2026-09-20_s03_ch12_t00_objective.png`. Use the absolute path when you call the
-tool (the repo lives at `C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7`). If you
-take more than one on the same turn for the same reason, add a suffix (`-2`, `-3`) rather
-than overwriting.
+For example `.../playthroughs/2026-09-26_14-30/screenshots/2026-09-26_s03_ch12_t03_boss-forecast.png`
+or `.../screenshots/2026-09-26_s03_ch12_t00_objective.png`. Use the absolute path when you
+call the tool. If you take more than one on the same turn for the same reason, add a suffix
+(`-2`, `-3`) rather than overwriting.
 
 **Keep every screenshot. Never delete or overwrite one.** They are part of the run's record.
 
@@ -296,7 +338,7 @@ part.** Work around it and keep playing. You have a chapter to win.
   if the map stops matching what you expect, rather than trusting a stale copy.
 - **The field menu holds Suspend directly above End.** Never open the field menu with raw
   presses; `fe7_end_turn` is the only sanctioned way to end a turn. Suspend save-quits the
-  chapter to the title screen, which ends your session as `STUCK`.
+  chapter to the title screen, and you then have to find your way back into the chapter.
 
 ---
 
@@ -313,8 +355,9 @@ Then:
 - **Do not repeat a failed call more than twice.** If it fails identically twice, it is not
   a dropped input, it is a refusal. Read the message — the tools name the specific cause —
   and do something else.
-- **Do not drop to raw `mgba_press_*`** to force it through. That is how inputs get lost
-  silently and how the board ends up in a state nobody can explain.
+- **Do not drop to raw `mgba_press_*`** to force a refused action through. That is how
+  inputs get lost silently and how the board ends up in a state nobody can explain. Raw
+  presses are for the screens no `fe7_*` tool drives; see "When you get stuck".
 - **Do not edit `src/fe7.ts` mid-run.** Changes need a rebuild and a restart to take effect,
   so the edit does nothing except make the run inconsistent with the log. Work around it and
   keep playing.
@@ -324,55 +367,73 @@ Then:
 - **Screenshots are for what is displayed, not for game state.** Use them freely to see
   dialogue text, a menu, the objective, or to sanity-check a surprising memory read. Then
   take the next action from memory, which is checkable.
-- **If the game is at the title screen or a save-slot screen, stop.** Report `STUCK`. Do not
-  pick a slot, do not choose Resume or Restart, do not load anything. Whatever brought the
-  game there is the human's to sort out.
+- **If the game is at the title screen or a save-slot screen, get back into the chapter.**
+  Screenshot it, pick the save slot already in use, and choose Resume Chapter if it is
+  offered, or Restart Chapter if it is not. Never start a new game, and never erase or copy
+  a save.
+
+---
+
+## When you get stuck
+
+Getting stuck does not end the session. Work through these in order:
+
+1. Use the `fe7_unstick` tool.
+2. If that doesn't work, use your intelligence to get back to playing the chapter.
+
+### Common ways the game gets stuck
+
+- **The game is on the Preparations screen.** Press Enter to get through it. Enter is the
+  GBA's Start button, so press Start with `mgba_press_buttons`, then `fe7_wait`.
+- **The mGBA MCP server got disconnected.** Reconnect to it, confirm with `mgba_ping`, and
+  carry on from where the game is.
+- **An unexpected menu or dialog popped up.** Press Enter to skip it, the same way.
 
 ---
 
 ## Save states — create, never load
 
 **After every won chapter, save exactly one state**, with `mgba_save_state` and an explicit
-absolute `path` under `playthrough/states/`:
+absolute `path` under the playthrough folder's `states/` subfolder:
 
 ```
-C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthrough/states/<session>_ch<chapter>_<slug>.ss
+<playthrough folder>/states/<session>_ch<chapter>_<slug>.ss
 ```
 
-For example `.../playthrough/states/s03_ch12_birds-of-a-feather.ss`. Use the session tag the
-loop gave you. Never pass a `slot`, and never reuse a path — check the folder first if you
+For example `.../playthroughs/2026-09-26_14-30/states/s03_ch12_birds-of-a-feather.ss`. Use
+the session tag the loop gave you. Never pass a `slot`, and never reuse a path — check the folder first if you
 are unsure, and add a suffix rather than overwrite.
 
 Save it **at the start of the next chapter** — once the ending events have been pressed
 through and `fe7_state` shows the new chapter loaded (turn 0 on the Preparations screen, or
 turn 1 if the chapter has no prep). That is the cleanest point for a human to resume from.
 If you cannot get there — the events will not clear, the game went somewhere unexpected —
-save wherever you are, say exactly where that is in the summary, and report `STUCK`.
+follow "When you get stuck" and keep working until the next chapter has loaded.
 
 **Never load a state. Never.** Not after a death, not after a lost chapter, not to undo a
 bad turn, not to retry a coin-flip attack, not because the board looks wrong. The states
 you save are a **fail-safe for the human**, who will decide whether to use them. The same
-goes for `mgba_reset`, the game's own Restart Chapter, and anything else that rewinds the
-game: a loss is reported as a loss, and the session ends. A campaign that quietly reloads is
-not a campaign, and it would make the log a lie.
+goes for `mgba_reset` and anything else that rewinds a chapter that is still in play. The
+one exception is the game's own Restart Chapter **after a game over**, which is how you play
+a lost chapter again. A campaign that quietly reloads to undo a bad turn is not a campaign,
+and it would make the strategy file a lie.
 
 ---
 
 ## Ending the session
 
-Every session ends with three things: a summary in `LOG.md`, a final screenshot, and a
-**result line** as the last line of your final message. The loop reads the result line, so
-it must be exactly one of:
+Every session ends with three things: your chapter's section of `CURRENT_RUN_STRATEGY.md`
+filled in, a final screenshot, and a **result line** as the last line of your final message. The loop reads the result line, so
+it must be exactly:
 
 ```
 PLAYTHROUGH_RESULT=WON
-PLAYTHROUGH_RESULT=LOST
-PLAYTHROUGH_RESULT=STUCK
 ```
 
-`WON` starts the next session on the next chapter. `LOST` and `STUCK` halt the loop for the
-human. A missing result line is treated as a crash, and the loop starts a new session on the
-same chapter.
+`WON` starts the next session on the next chapter. There is no result line for a lost
+chapter or for being stuck, because neither one ends the session: keep playing until the
+chapter is won. A missing result line is treated as a crash, and the loop starts a new
+session on the same chapter.
 
 ### When the chapter is won
 
@@ -386,38 +447,85 @@ same chapter.
    Yes/No — take a screenshot first, then follow this table, and record the choice in the
    summary:
 
-   | Screen                                | Choose                                                                                                    |
-   | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-   | "Save?" / "Continue?" after a chapter | Yes / the slot already in use                                                                             |
-   | A story or difficulty choice          | Should not appear — the tale and difficulty were chosen before the run. Screenshot it and report `STUCK`. |
-   | Anything else                         | The highlighted default, and say so in the summary                                                        |
+   | Screen                                | Choose                                                                                                |
+   | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+   | "Save?" / "Continue?" after a chapter | Yes / the slot already in use                                                                         |
+   | A story or difficulty choice          | Should not appear — the tale and difficulty were chosen before the run. Take the highlighted default. |
+   | Anything else                         | The highlighted default, and say so in the summary                                                    |
 
-   If it takes you to the title screen, stop and report `STUCK` instead.
+   If it takes you to the title screen, follow "When you get stuck" to get back into the game.
 
 3. **Save the state** (see above).
-4. **Write the summary** (see below).
-5. **Final message**, ending in `PLAYTHROUGH_RESULT=WON`.
+4. **Update `roster.json`** (see below).
+5. **Write the summary** (see below).
+6. **Final message**, ending in `PLAYTHROUGH_RESULT=WON`.
+
+### `roster.json` — the dead and the unrecruited
+
+The stream overlay draws two lists that only you can maintain: who has **died** and who you
+**failed to recruit**. They live in `roster.json` at the top of the playthrough folder:
+
+```json
+{
+  "dead": ["Sain"],
+  "unrecruited": ["Dorcas"]
+}
+```
+
+At the end of the chapter, before writing the summary:
+
+- **`dead`**: append every one of _your_ units that died this chapter. Use the name the game
+  shows, one string each. The `FALLEN:` line of `fe7_wait` / `fe7_end_turn` and your own
+  summary are the sources. Only the attempt that won counts: restarting a lost chapter
+  brings back everyone who fell in the lost attempt.
+- **`unrecruited`**: compare your chapter's **Recruits** table in `CURRENT_RUN_STRATEGY.md`
+  against who actually joined. Append every recruitable unit that did not. A unit you failed
+  to recruit and then killed goes here, not in `dead` — it was never yours.
+- **Append only, in the order things happened.** Never remove or reorder an entry; the
+  overlay shows them left to right in the order written. If the file does not exist yet,
+  create it with both lists. Keep it valid JSON: the overlay ignores the whole file if it
+  cannot parse it.
 
 ### When the chapter is lost
 
-Screenshot the game-over screen, write the summary, and end with `PLAYTHROUGH_RESULT=LOST`.
-No state is saved (the human already has the one from the start of this chapter). Do not
-load, do not restart, do not press through into a new attempt.
+Screenshot the game-over screen, then play the chapter again. Press through the game over,
+and from the title screen pick the save slot already in use and choose Restart Chapter.
+Units that fell in the lost attempt are back, so do not add them to `roster.json`. Work out
+what went wrong, change the plan, and keep going until the chapter is won.
 
 ### When you cannot make progress
 
-If the game is somewhere the tools cannot drive, the board will not move and `fe7_unstick`
-cannot explain why, or you are at the title screen: save a state if the game is in a
-playable position, write the summary saying exactly what the screen shows, and end with
-`PLAYTHROUGH_RESULT=STUCK`.
+Follow "When you get stuck" above. Being stuck is a problem to solve, not a reason to end
+the session.
 
 ---
 
 ## The chapter summary
 
-Append one entry to `playthrough/LOG.md` at the end of every session. **Brief** — about ten
-lines. It is not a play-by-play; it is what the next session needs to know, and what the
-human will skim to follow the campaign. Use this shape:
+At the end of every session, write into the playthrough folder's `CURRENT_RUN_STRATEGY.md`.
+**Edit the file in place; never replace it, reorder it, or touch the human's pre-filled
+parts** (the general strategy and every chapter's **Recruits** list). The file persists for
+the whole playthrough, so what you write is read by the next session and by any later attempt
+at your chapter. Three places take your writing:
 
-For a `LOST` or `STUCK` session, the heading says so, "Next" says exactly what the screen
-shows and where the last good state is, and "Learned" says what you would do differently.
+1. **Your chapter's section.**
+   - Bump the `attempts:` counter by one for every attempt you made at the chapter, lost
+     ones included.
+   - Fill in **Objectives** with the win condition as the game stated it, if it is still
+     the placeholder.
+   - Write **Agent notes**: **brief**, about ten lines. Not a play-by-play; what the next
+     session needs to know, and what a future attempt at this chapter would need. Cover the
+     result and the turn it ended on, who died and who was recruited, what each unit gained
+     that matters (level-ups, promotions, items), the army's state at handover — who is weak,
+     who is out of weapon uses — and what you would do differently. If a Yes/No screen came
+     up during the ending, record the choice here. If notes from a previous attempt are
+     already there, add yours below them under a heading naming your session tag rather
+     than overwriting them.
+2. **Broad strategy notes**, near the top of the file. Only for a lesson that applies beyond
+   this chapter — a tool quirk, an enemy behaviour, a unit that always needs babysitting.
+   One or two lines, appended. Leave it alone if you have nothing cross-chapter to say.
+3. Nothing else. Do not add new sections, do not rewrite the general strategy, do not
+   delete anyone's notes.
+
+If you lost the chapter or got stuck along the way, say so in your notes: what went wrong,
+how you got back to playing, and what you would do differently.
