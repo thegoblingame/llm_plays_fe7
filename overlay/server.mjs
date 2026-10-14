@@ -271,19 +271,22 @@ async function refreshChapter() {
   }
 }
 
-// ---------------------------------------------------------------- roster.json
+// ---------------------------------------------------------------- run_state.json
 
 /**
  * The two lists the agent maintains by hand at the end of each chapter:
  *
- *   { "dead": ["Sain"], "unrecruited": ["Dorcas"] }
+ *   { ..., "dead": ["Sain"], "unrecruited": ["Dorcas"] }
  *
- * in roster.json at the top of the playthrough folder, next to
- * CURRENT_RUN_STRATEGY.md. Names, not IDs: an unrecruited unit never appears in
- * any tool output, so a name is all the agent has for it. Each name is resolved
- * to a portrait through names.json; a name that is not there falls back to
- * <name>.png so a new character still works once the file is dropped in.
- * Re-read on every rescan, so an edit shows up within RESCAN_MS.
+ * in run_state.json at the top of the playthrough folder, next to
+ * CURRENT_RUN_STRATEGY.md (the file also carries the current chapter and the
+ * attempt count, which nothing here draws). Playthroughs from before 2026-09-30
+ * kept the same two lists in roster.json; that is read when run_state.json is
+ * absent. Names, not IDs: an unrecruited unit never appears in any tool output,
+ * so a name is all the agent has for it. Each name is resolved to a portrait
+ * through names.json; a name that is not there falls back to <name>.png so a
+ * new character still works once the file is dropped in. Re-read on every
+ * rescan, so an edit shows up within RESCAN_MS.
  */
 let rosterRaw = null;
 
@@ -312,10 +315,14 @@ function rosterEntries(list) {
 
 async function refreshRoster() {
   let raw = null;
-  try {
-    raw = await readFile(join(await playthroughDir(), "roster.json"), "utf8");
-  } catch {
-    /* no playthrough folder yet, or no roster.json in it: both lists stay empty */
+  let source = "run_state.json";
+  for (source of ["run_state.json", "roster.json"]) {
+    try {
+      raw = await readFile(join(await playthroughDir(), source), "utf8");
+      break;
+    } catch {
+      /* try the next name; with neither file both lists stay empty */
+    }
   }
   if (raw === rosterRaw) return;
   rosterRaw = raw;
@@ -324,7 +331,7 @@ async function refreshRoster() {
     try {
       parsed = JSON.parse(raw);
     } catch (e) {
-      console.warn("roster.json unreadable, keeping the last good lists:", e.message);
+      console.warn(`${source} unreadable, keeping the last good lists:`, e.message);
       return;
     }
   }

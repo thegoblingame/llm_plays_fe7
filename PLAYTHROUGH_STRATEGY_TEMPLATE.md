@@ -23,8 +23,6 @@ Cross-chapter lessons the agent adds as it plays. Append below.
 
 ### Prologue — A Girl from the Plains
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -38,8 +36,6 @@ None.
 _(none yet)_
 
 ### Chapter 1 — Footsteps of Fate
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -55,8 +51,6 @@ _(none yet)_
 
 ### Chapter 2 — Sword of Spirits
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -70,8 +64,6 @@ None.
 _(none yet)_
 
 ### Chapter 3 — Band of Mercenaries
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -89,8 +81,6 @@ _(none yet)_
 
 ### Chapter 4 — In Occupation's Shadow
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -106,8 +96,6 @@ _(filled in by the agent)_
 _(none yet)_
 
 ### Chapter 5 — Beyond the Borders
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -126,8 +114,6 @@ _(none yet)_
 
 ### Chapter 6 — Blood of Pride
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -144,8 +130,6 @@ _(none yet)_
 
 ### Chapter 7 — Siblings Abroad
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -159,8 +143,6 @@ None.
 _(none yet)_
 
 ### Chapter 7x — The Black Shadow (gaiden)
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -176,8 +158,6 @@ _(none yet)_
 
 ### Chapter 8 — Vortex of Strategy
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -192,8 +172,6 @@ _(none yet)_
 
 ### Chapter 9 — A Grim Reunion
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -207,8 +185,6 @@ None.
 _(none yet)_
 
 ### Chapter 10 — The Distant Plains
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -226,8 +202,6 @@ _(none yet)_
 
 ### Chapter 11 — Another Journey
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -242,8 +216,6 @@ _(none yet)_
 
 ### Chapter 12 — Birds of a Feather
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -257,8 +229,6 @@ None.
 _(none yet)_
 
 ### Chapter 13 — In Search of Truth
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -276,8 +246,6 @@ _(none yet)_
 
 ### Chapter 13x — The Peddler Merlinus (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -291,8 +259,6 @@ None.
 _(none yet)_
 
 ### Chapter 14 — False Friends
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -311,8 +277,6 @@ _(none yet)_
 
 ### Chapter 15 — Talons Alight
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -327,8 +291,6 @@ _(none yet)_
 
 ### Chapter 16 — Noble Lady of Caelin
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -342,8 +304,6 @@ None.
 _(none yet)_
 
 ### Chapter 17 — Whereabouts Unknown
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -362,8 +322,6 @@ _(none yet)_
 
 ### Chapter 17x — The Port of Badon (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -380,8 +338,6 @@ _(none yet)_
 
 ### Chapter 18 — Pirate Ship
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -395,8 +351,6 @@ None.
 _(none yet)_
 
 ### Chapter 19 — The Dread Isle
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -414,8 +368,6 @@ _(none yet)_
 
 ### Chapter 19x — Imprisoner of Magic (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -430,8 +382,6 @@ _(none yet)_
 
 ### Chapter 19xx — A Glimpse in Time (gaiden, Hector mode only)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -445,8 +395,6 @@ None.
 _(none yet)_
 
 ### Chapter 20 — Dragon's Gate
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -464,8 +412,6 @@ _(none yet)_
 
 ### Chapter 21 — New Resolve
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -479,8 +425,6 @@ None.
 _(none yet)_
 
 ### Chapter 22 — Kinship's Bond
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -499,8 +443,6 @@ _(none yet)_
 
 ### Chapter 23 — Living Legend
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -517,8 +459,6 @@ _(none yet)_
 
 ### Chapter 23x — Genesis (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -532,8 +472,6 @@ None.
 _(none yet)_
 
 ### Chapter 24 — Four-Fanged Offense (24a Linus version / 24b Lloyd version)
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -554,8 +492,6 @@ _(none yet)_
 
 ### Chapter 25 — Crazed Beast
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -572,8 +508,6 @@ _(none yet)_
 
 ### Chapter 26 — Unfulfilled Heart
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -589,8 +523,6 @@ Vaida appears here as an enemy. Do **not** kill her; she must survive this chapt
 _(none yet)_
 
 ### Chapter 27 — Pale Flower of Darkness
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -611,8 +543,6 @@ _(none yet)_
 
 ### Chapter 28 — Battle before Dawn
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -630,8 +560,6 @@ _(none yet)_
 
 ### Chapter 28x — Night of Farewells (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -645,8 +573,6 @@ None.
 _(none yet)_
 
 ### Chapter 29 — Cog of Destiny
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -664,8 +590,6 @@ _(none yet)_
 
 ### Chapter 30 — The Berserker
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -680,8 +604,6 @@ _(none yet)_
 
 ### Chapter 31 — Sands of Time
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -695,8 +617,6 @@ None.
 _(none yet)_
 
 ### Chapter 31x — Battle Preparations (gaiden)
-
-`attempts: 0`
 
 **Objectives:**
 
@@ -714,8 +634,6 @@ _(none yet)_
 
 ### Chapter 32 — Victory or Death
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -732,8 +650,6 @@ _(none yet)_
 
 ### Chapter 32x — The Value of Life (gaiden)
 
-`attempts: 0`
-
 **Objectives:**
 
 _(filled in by the agent)_
@@ -747,8 +663,6 @@ None.
 _(none yet)_
 
 ### Final Chapter — Light (two parts)
-
-`attempts: 0`
 
 **Objectives:**
 

@@ -2,7 +2,11 @@
 # One fresh Claude session per chapter, until the game is beaten, a session reports
 # LOST or STUCK, a STOP file appears, or MAX_SESSIONS is reached.
 #
-#   usage:  playthroughs/run.sh [model] [effort]        e.g.  playthroughs/run.sh fable medium
+#   usage:  playthroughs/run.sh <chapter> [model] [effort]    e.g.  playthroughs/run.sh 13 fable medium
+#           <chapter> is the chapter loaded in the emulator right now: a number (13), a gaiden
+#           (7x, 19xx), "prologue" or "final". It is matched against the "### ..." headings of
+#           PLAYTHROUGH_STRATEGY_TEMPLATE.md and written to run_state.json. When continuing a
+#           playthrough that already has a run_state.json, pass "-" and the file is left alone.
 #   stop:   touch playthroughs/STOP    (takes effect between sessions; delete it to resume)
 #   env:    MAX_SESSIONS (default 45)  RETRY_WAIT seconds (default 900)  MAX_FAILS (default 6)
 #           PLAYTHROUGH_DIR to continue an existing playthrough folder instead of starting a
@@ -15,6 +19,8 @@
 # it started:  playthroughs/<YYYY-MM-DD_HH-MM>/   containing
 #   CURRENT_RUN_STRATEGY.md   the run's strategy file: a copy of PLAYTHROUGH_STRATEGY_TEMPLATE.md made
 #                  when the folder is created, read by every session and written to at the end of each
+#   run_state.json the run's machine-readable state: current chapter, attempts at it, chapters
+#                  completed, the dead and the unrecruited. Created here, maintained by the sessions
 #   states/        save states, one per won chapter
 #   sessions/      stream-json transcript and MCP config per session
 #   screenshots/   every screenshot the agent takes
@@ -35,8 +41,9 @@ PT="$ROOT/playthroughs"
 MCP_SERVER="$(cd "$ROOT/../mcp-mgba" && pwd)/dist/index.js"
 # Paths handed to node must be Windows-style: Git Bash's /c/Users/... is read by node as C:\c\Users\...
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
-MODEL="${1:-fable}"
-EFFORT="${2:-medium}"
+CHAPTER_ARG="${1:-}"
+MODEL="${2:-fable}"
+EFFORT="${3:-medium}"
 MAX_SESSIONS="${MAX_SESSIONS:-45}"
 RETRY_WAIT="${RETRY_WAIT:-900}"
 MAX_FAILS="${MAX_FAILS:-6}"
@@ -78,6 +85,24 @@ print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("ca
 [[ -f "$MCP_SERVER" ]] || { echo "ERROR: $MCP_SERVER not found — run npm run build in mcp-mgba" >&2; exit 1; }
 [[ -f "$ROOT/PLAYTHROUGH_RUNBOOK.md" ]] || { echo "ERROR: PLAYTHROUGH_RUNBOOK.md missing" >&2; exit 1; }
 [[ -f "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" ]] || { echo "ERROR: PLAYTHROUGH_STRATEGY_TEMPLATE.md missing" >&2; exit 1; }
+[[ -n "$CHAPTER_ARG" ]] || { echo "usage: playthroughs/run.sh <chapter> [model] [effort]   (chapter: 13, 7x, prologue, final; or - to keep an existing run_state.json)" >&2; exit 1; }
+
+# Resolve a chapter argument to the exact "### ..." heading in the template, and the mode
+# ("## Lyn mode" / "## Hector mode") that heading sits under. Prints "mode<TAB>heading".
+resolve_chapter() {
+  local want
+  case "${1,,}" in
+    prologue) want='^### prologue ' ;;
+    final)    want='^### final chapter ' ;;
+    *)        want="^### chapter ${1,,} " ;;
+  esac
+  # The template may carry CRLF line endings; strip the CR before matching.
+  awk -v pat="$want" '
+    { sub(/\r$/, "") }
+    /^## /  { mode = tolower($0); sub(/^## /, "", mode); sub(/ mode$/, "", mode) }
+    tolower($0) ~ pat { sub(/^### /, ""); print mode "\t" $0; exit }
+  ' "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md"
+}
 # The playthrough folder: a new one per launch, named for the start time, unless the human
 # points PLAYTHROUGH_DIR at an existing one to continue it.
 if [[ -n "${PLAYTHROUGH_DIR:-}" ]]; then
@@ -88,6 +113,24 @@ fi
 mkdir -p "$RUN/states" "$RUN/sessions" "$RUN/screenshots" "$RUN/runs"
 # The run's strategy file: a fresh copy of the template for a new playthrough, left alone when continuing one.
 [[ -f "$RUN/CURRENT_RUN_STRATEGY.md" ]] || cp "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" "$RUN/CURRENT_RUN_STRATEGY.md"
+# The run's state file. Written once here with the chapter the human says is loaded; from
+# then on the sessions own it (attempts, completed, dead, unrecruited).
+STATE_JSON="$RUN/run_state.json"
+if [[ -f "$STATE_JSON" ]]; then
+  [[ "$CHAPTER_ARG" == "-" ]] || echo "note: $STATE_JSON already exists; ignoring chapter argument '$CHAPTER_ARG'."
+else
+  [[ "$CHAPTER_ARG" != "-" ]] || { echo "ERROR: no run_state.json in $RUN; name the chapter that is loaded." >&2; exit 1; }
+  IFS=$'\t' read -r mode heading <<< "$(resolve_chapter "$CHAPTER_ARG")"
+  [[ -n "$heading" ]] || { echo "ERROR: no '### Chapter $CHAPTER_ARG — ...' heading in PLAYTHROUGH_STRATEGY_TEMPLATE.md" >&2; exit 1; }
+  python - "$STATE_JSON" "$mode" "$heading" <<'EOF'
+import json, sys
+path, mode, heading = sys.argv[1:4]
+state = {"mode": mode, "current_chapter": heading, "attempts": 0, "completed": [], "dead": [], "unrecruited": []}
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(state, f, ensure_ascii=False, indent=2); f.write("\n")
+EOF
+  echo "--- run_state.json: $mode mode, starting at '$heading'"
+fi
 echo "--- playthrough folder: $RUN"
 
 # Continue numbering from the last session on disk, so a restarted loop does not reuse tags.
@@ -115,7 +158,7 @@ while :; do
 
   echo "--- $(date '+%F %T') | $tag starting (model=$MODEL effort=$EFFORT)"
   {
-    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, states/, sessions/, screenshots/ and runs/ inside). The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")"
+    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, run_state.json, states/, sessions/, screenshots/ and runs/ inside). The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")"
     cat "$ROOT/PLAYTHROUGH_RUNBOOK.md"
   } | (
     cd "$ROOT" && claude -p \
@@ -145,7 +188,7 @@ while :; do
     WON)
       fails=0 ;;
     LOST|STUCK)
-      echo "Session $tag reported $result. Halting for the human. See $RUN/CURRENT_RUN_STRATEGY.md and $transcript."
+      echo "Session $tag reported $result. Halting for the human. See $RUN/run_state.json, $RUN/CURRENT_RUN_STRATEGY.md and $transcript."
       break ;;
     *)
       fails=$((fails + 1))

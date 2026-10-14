@@ -20,19 +20,24 @@ You are **one session in a chain**. The chain works like this:
 - Your session's job is **the chapter that is loaded right now**. Beat it, hand the game
   over at the start of the next chapter, write a short summary, and exit. The loop reads
   your result and starts the next session on the next chapter.
-- **Nothing carries between sessions except the game itself, `CURRENT_RUN_STRATEGY.md`
-  and `roster.json`** in the playthrough folder. No conversation history, no scratch notes. That file starts as
-  a copy of `PLAYTHROUGH_STRATEGY_TEMPLATE.md` at the repo root: general strategy written by the human, plus one
-  section per chapter with the chapter's recruitable units pre-filled and room for you to
-  record what you learned. Every session reads it before playing and writes into it at the
-  end, so what you write there is the only memory the next session has of your chapter —
-  and it is the only memory a session on a **later attempt at the same chapter** has of
-  yours.
+- **Nothing carries between sessions except the game itself and two files in the
+  playthrough folder.** No conversation history, no scratch notes.
+  - **`run_state.json`** is the run's state: which chapter is being played, how many attempts
+    have been made at it, which chapters are done, who has died and who was never recruited.
+    It is small, it is JSON, and it is the first thing you read. The loop creates it with
+    the chapter the human loaded; you keep it current (see "`run_state.json`" below).
+  - **`CURRENT_RUN_STRATEGY.md`** is the run's memory in prose. It starts as a copy of
+    `PLAYTHROUGH_STRATEGY_TEMPLATE.md` at the repo root: general strategy written by the
+    human, plus one section per chapter with the chapter's recruitable units pre-filled and
+    room for you to record what you learned. Every session reads it before playing and
+    writes into it, so what you write there is the only memory the next session has of your
+    chapter — and the only memory a session on a **later attempt at the same chapter** has
+    of yours.
 - **You might be starting mid-chapter.** If the previous session died before finishing —
   crashed, hit a limit, timed out — the loop starts a new one on the same chapter, wherever
-  the game was left. `fe7_state` tells you the turn; treat it as your starting point. The
-  chapter sections in `CURRENT_RUN_STRATEGY.md` tell you which chapter you are on: the last
-  one with notes filled in is the previous session's, and yours is the next.
+  the game was left. `fe7_state` tells you the turn; treat it as your starting point.
+  `run_state.json` still names the chapter, and its `attempts` already counts the attempt
+  in progress.
 
 The human is not watching in real time. There is no one to ask. Decide, act, and report.
 
@@ -45,14 +50,16 @@ The human is not watching in real time. There is no one to ask. Decide, act, and
    can manage. Every unit that dies here is gone for the rest of the campaign, so a loss is
    not a local setback the way it is on a one-chapter run. Play for the long game.
 2. **Hand over cleanly.** When the chapter is won, press through the ending events until the
-   next chapter has loaded, **save a state**, fill in **your chapter's section** of the
-   playthrough folder's `CURRENT_RUN_STRATEGY.md`, and end with the result line. All three
-   are described below.
+   next chapter has loaded, **save a state**, update `run_state.json`, fill in **your
+   chapter's section** of the playthrough folder's `CURRENT_RUN_STRATEGY.md`, and end with
+   the result line. All four are described below.
 
 **You are not taking notes.** `fe7_note` exists as a tool; do not call it. Do not record tool
 gaps, do not log screenshots, do not keep a running journal. The automatic log captures
-every `fe7_*` call already. The only writing you do all session is in
-`CURRENT_RUN_STRATEGY.md`, at the end.
+every `fe7_*` call already. The only writing you do all session is to `run_state.json` (the
+attempt counter at the start of each attempt, the handover at the end) and to
+`CURRENT_RUN_STRATEGY.md` (your chapter's Objectives and Agent notes at the start of each
+attempt, the chapter summary at the end).
 
 Play to win. Take risks when the odds favour them and avoid them when they do not, the way a
 careful player would. Free experiments are fine — a refused attack costs nothing, a menu
@@ -72,6 +79,15 @@ Three things, and they are the constraints you plan around:
 - **A lord dies.** Lyn, Eliwood, or Hector. Whichever of them the chapter has deployed.
 - **A unit you are required to protect dies**, on a chapter whose objective is to defend
   someone.
+- **Two or more units die and the attempt count is less than four.** Technically, this does
+  not cause a game loss, but the chapter also needs to be restarted. On the first, second
+  or third attempt at a chapter, losing multiple units is an excessive loss of human
+  resources, and it makes the remainder of the run untenable. The limit on attempts is
+  there because some chapters may be so difficult that they cannot be beaten without losing
+  multiple units: **if the attempt count is 4 or more, progress through the chapter no
+  matter how many units die.** The attempt count is `attempts` in `run_state.json`, which
+  already includes the attempt you are playing (see "Before you start"). Count deaths
+  across the whole attempt, not per turn.
 
 Everything else is a setback, not the end. If the chapter is lost, play it again: see "When the chapter is lost" below.
 
@@ -85,8 +101,8 @@ time it started, and **everything a session writes goes inside that folder**:
 
 ```
 C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthroughs/<YYYY-MM-DD_HH-MM>/
-  CURRENT_RUN_STRATEGY.md   strategy and per-chapter notes — the only memory between sessions
-  roster.json    who has died and who you failed to recruit, for the stream overlay (see "Ending the session")
+  run_state.json            current chapter, attempts at it, chapters done, the dead and the unrecruited
+  CURRENT_RUN_STRATEGY.md   strategy and per-chapter notes in prose
   states/        save states, one per won chapter
   screenshots/   every screenshot you take
   sessions/      transcripts and MCP configs (written by the loop, not by you)
@@ -97,15 +113,45 @@ C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthroughs/<YYYY-MM-D
 **Which folder is yours:**
 
 - **Started by the loop:** the one-line header above this runbook names your playthrough
-  folder. It already exists with `CURRENT_RUN_STRATEGY.md` and the subfolders inside. Use
-  it and nothing else.
+  folder. It already exists with `run_state.json`, `CURRENT_RUN_STRATEGY.md` and the
+  subfolders inside. Use it and nothing else.
   Never create a second folder, and never write into another playthrough's folder.
 - **Started by hand, with no folder named in your prompt:** you are the first session of a
   new playthrough. **Create the folder yourself before anything else**, named for the
   current date and time in the form `YYYY-MM-DD_HH-MM` (24-hour clock, no colons), with
-  `states/` and `screenshots/` inside it, and **copy the template**
-  `llm_plays_fe7/PLAYTHROUGH_STRATEGY_TEMPLATE.md` into it as `CURRENT_RUN_STRATEGY.md`. Then
-  continue as below.
+  `states/` and `screenshots/` inside it, **copy the template**
+  `llm_plays_fe7/PLAYTHROUGH_STRATEGY_TEMPLATE.md` into it as `CURRENT_RUN_STRATEGY.md`, and
+  write a `run_state.json` (format below) whose `current_chapter` is the heading of the
+  chapter the game has loaded, with `attempts` 0 and the lists empty. Then continue as
+  below.
+
+### `run_state.json`
+
+```json
+{
+  "mode": "hector",
+  "current_chapter": "Chapter 13 — In Search of Truth",
+  "attempts": 1,
+  "completed": [
+    { "chapter": "Chapter 12 — Birds of a Feather", "attempts": 1, "session": "s02" }
+  ],
+  "dead": ["Sain"],
+  "unrecruited": ["Dorcas"]
+}
+```
+
+| Key               | Meaning                                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`            | `lyn` or `hector`. Set by the loop; never changes.                                                                                                                         |
+| `current_chapter` | The chapter being played, **verbatim** as its `### ` heading reads in `CURRENT_RUN_STRATEGY.md`. That heading is how you find your section: search for the exact string.   |
+| `attempts`        | Attempts made at `current_chapter`, **including the one in progress**. You add 1 at the start of every attempt. 0 means nobody has started it yet.                            |
+| `completed`       | One entry per chapter won, in order, with the attempts it took and the session tag that won it. Appended at handover.                                                        |
+| `dead`            | Your units that have died, in the order they fell. Names as the game shows them.                                                                                            |
+| `unrecruited`     | Recruitable units that never joined, in the order the chances were missed.                                                                                                  |
+
+Edit it in place with small, exact changes, and keep it valid JSON — the overlay and the
+next session both read it, and a file that does not parse is a file nobody can read. Never
+remove or reorder entries in the three lists.
 
 Everywhere this runbook says "the playthrough folder", it means this folder. Old playthroughs
 live under `archive/`; never read from or write to them.
@@ -114,24 +160,34 @@ live under `archive/`; never read from or write to them.
 
 ## Before you start
 
-1. **Read `CURRENT_RUN_STRATEGY.md` in the playthrough folder.** Read the general strategy
-   and "Broad strategy notes" at the top, then find **your chapter's section**: the first
-   one whose "Agent notes" are still empty, or, if you are re-attempting a chapter, the one
-   whose `attempts` counter is already above zero and whose notes describe a loss. The
-   chapter sections before yours tell you who is alive, who is weak, and anything a previous
-   session wanted you to know. Your own section holds the chapter's **recruitable units and
-   how to recruit them**, pre-filled by the human, and any notes from earlier attempts. If
-   every section is still blank, you are the first session.
-2. `fe7_state` — confirm you get a battlefield with units in it. If turn is 0 and no units
+1. **Read `run_state.json` in the playthrough folder.** `current_chapter` is the chapter
+   you are playing, `attempts` is how many times it has been tried, and `dead` and
+   `unrecruited` tell you who is not coming.
+
+   **Then add 1 to `attempts`**, and save the file. Do this for **every attempt on a
+   chapter**: each time you are about to play it from its start, open `run_state.json` and
+   add 1. That means once now, and once more every time you restart the chapter during this
+   session. The one case that is not a new attempt is picking up a chapter mid-way (turn 2
+   or later) where a previous session left it: that attempt was already counted.
+2. **Read `CURRENT_RUN_STRATEGY.md` in the playthrough folder.** Read the general strategy
+   and "Broad strategy notes" at the top, then find **your chapter's section**: the `### `
+   heading that matches `current_chapter` exactly. The chapter sections before yours tell
+   you who is alive, who is weak, and anything a previous session wanted you to know. Your
+   own section holds the chapter's **recruitable units and how to recruit them**, pre-filled
+   by the human, and any notes from earlier attempts.
+3. `fe7_state` — confirm you get a battlefield with units in it. If turn is 0 and no units
    are listed, no chapter is loaded; follow "When you get stuck" to get into the chapter.
-3. Check the phase is `player`. If not, `fe7_wait`.
-4. If anything looks strange, `fe7_unstick` before pressing anything.
-5. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up.** No tool
+4. Check the phase is `player`. If not, `fe7_wait`.
+5. If anything looks strange, `fe7_unstick` before pressing anything.
+6. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up.** No tool
    drives it. Press Start once with `mgba_press_buttons` (hold 6 frames), then `fe7_wait`; the
    chapter begins on turn 1. Unit slots can be re-sorted when prep closes, so read `fe7_state`
    again before trusting any slot number from before.
-6. **Take an opening screenshot** (see "Screenshots" below) so the run's record starts with
+7. **Take an opening screenshot** (see "Screenshots" below) so the run's record starts with
    what the screen actually showed — the objective text, the map, and any dialogue.
+8. Based on the information you've received about the current chapter, fill in the empty
+   **Objectives** and **Agent notes** subcategories within the `CURRENT_RUN_STRATEGY.md`
+   file. If those sections are already filled in, make whatever adjustments are needed.
 
 ---
 
@@ -141,7 +197,7 @@ live under `archive/`; never read from or write to them.
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fe7_state`          | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `fe7_reachable`      | Where one unit can legally go, as a cost map with allies, greens and enemies marked.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `fe7_act`            | One unit's whole turn: select, walk to a tile, and commit an action. On an attack, pass `weapon_slot` to swing a chosen inventory weapon (the Rapier, the Silver Lance); without it the EQUIPPED weapon, slot 0, is always used, and the game re-equips whatever you pick, so re-read `fe7_state` for slot numbers afterwards. Five are confirmed by effect: `wait` / `attack` / `staff` / `item` / `seize`. Six more are the **shallow tier** — `visit` / `door` / `chest` / `ride` / `dismount` / `status` — which press A and report the before/after delta instead of claiming success. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
+| `fe7_act`            | One unit's whole turn: select, walk to a tile, and commit an action. On an attack, pass `weapon_slot` to swing a chosen inventory weapon (the Rapier, the Silver Lance); without it the EQUIPPED weapon, slot 0, is always used, and the game re-equips whatever you pick, so re-read `fe7_state` for slot numbers afterwards. Eighteen actions report a verified result: `wait` / `attack` / `staff` / `item` / `seize`, the target-selection commands `talk` / `dance` / `play` / `rescue` / `drop` / `take` / `give` / `trade` / `steal` / `support`, and the map-object commands `visit` / `door` / `chest`. `take`, `give` and `trade` are free actions that leave the unit mid-turn, and mounted units can `canto_x`/`canto_y` on after most of them. `ride` / `dismount` / `status` are accepted but unverified. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
 | `fe7_terrain`        | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `fe7_threat`         | The enemy DANGER MAP: for every tile, how many enemies can attack it next enemy phase, and which enemies threaten each of your units. Pure read, computed from ROM Move/cost tables. Pass `verify: slot` to cross-check one enemy against the game's own grid.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `fe7_inspect`        | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -195,17 +251,63 @@ call the tool. If you take more than one on the same turn for the same reason, a
 
 **Keep every screenshot. Never delete or overwrite one.** They are part of the run's record.
 
-### The 27 actions — what is known, and what still is not
+### The 27 actions — what you can do, and the few you cannot
 
-The game offers **27 unit actions**. `fe7_act` takes eleven: five confirmed by effect —
-`wait`, `attack`, `staff`, `item`, `seize` — and the six shallow-tier ones, which press A and
-report a delta rather than a verdict. All 27 are catalogued in `RAM.md`; you do not need it to play.
+The game offers **27 unit actions**. `fe7_act` drives **18 of them with a verified result**,
+three more unverified, and cannot yet do the five that open a shop, the convoy or the arena.
+All 27 are catalogued in `RAM.md`; you do not need it to play.
 
-Every command has a stable ROM pointer, and the tool layer reads a live menu and names each
-entry, so "what can this unit do on this tile" has an exact answer instead of a guess.
+Every command is found on the menu by its ROM pointer, and every target is picked from the
+game's own target list, read out of memory. Nothing is pressed on an entry or a target the
+tool could not name first, and each action below reports a verdict taken from what changed in
+memory, not from the absence of an error.
 
-**What is still missing is everything after that `A`.** Each action opens its own screen, and
-each needs a memory signal that proves it landed.
+#### What each action needs and what it proves
+
+| `action` | When the game offers it | What to pass | The result says |
+|---|---|---|---|
+| `talk` | The unit is **next to** a character it has a conversation with. The speaker matters as much as the tile. | `target_slot` + `target_faction` (`enemy` / `green` / `player`), or `target_x`/`target_y`. Optional when there is one candidate. | `RECRUITED … now PLAYER #N` when the character changed sides, or that it did not. |
+| `dance` / `play` | Ninian or Nils is next to an ally that has **already acted**. The two words are interchangeable. | The ally, as above. Add `item_slot` only to use one of the four rings instead of the plain dance. | `REFRESHED` — the ally's has-acted flag cleared, so it can act again. A ring buffs and does not refresh. |
+| `rescue` | Next to an ally whose Con is at most this unit's Aid. | The ally. | `RESCUED` — this unit now carries it. |
+| `drop` | The unit is carrying someone and a free tile is adjacent. | `target_x`/`target_y` of the tile. | `DROPPED` and where the unit now stands. It cannot act until next turn. |
+| `take` / `give` | Next to an ally, with a carried unit to move between you. | The ally. | Who is carrying whom now. **Free action** — see below. |
+| `trade` | Next to another **player** unit. | The partner, plus `item_slot` (your slot to give) and/or `take_item_slot` (their slot to take). Both together swap. | Both inventories, before and after. **Free action**, once per unit per turn. |
+| `steal` | A **thief** with a free slot, next to an enemy carrying an item. | The enemy slot; `item_slot` is the slot in the **enemy's** inventory. Weapons, tomes and staves cannot be stolen. | `STOLEN` and both inventories. |
+| `support` | Next to a support partner whose conversation is ready. | The partner. | `SUPPORT GAINED` and the support record. |
+| `visit` | Standing **on** an open village or house. | Nothing. | `VISITED`; a village also reads `CLOSED`, and a character or item gained is listed. |
+| `door` | **Next to** a door, with a Door Key or a thief's Lockpick. | Nothing. | `OPENED` and the tile that changed. |
+| `chest` | **On** a closed chest, with a Chest Key or a Lockpick, and a free inventory slot. | Nothing. | `OPENED` and the item gained. |
+
+`wait`, `attack`, `staff`, `item` and `seize` work as before.
+
+When the entry is not on the menu, the result prints the menu the game did offer and what that
+command requires. When you name a target the game does not offer, it backs out with the unit
+unspent and lists who it does offer.
+
+#### Free actions leave the unit mid-turn
+
+`take`, `give` and `trade` do **not** end the unit's turn. The game reopens that unit's menu
+and waits. Finish with **another `fe7_act` for the same unit at its current tile** — `wait`,
+`drop`, `attack`, `item`. It can no longer move. If you act with a different unit first, or
+end the turn, that unit's turn simply ends where it stands.
+
+This is what makes the classic plays work: trade a weapon across and then attack with it;
+take a carried unit and drop it on the far side in the same turn.
+
+#### Mounted units keep their leftover Move
+
+After `talk`, `rescue`, `drop`, `steal`, `support` or `visit`, a mounted unit (cavalier,
+paladin, pegasus, wyvern, nomad, troubadour) is handed its leftover Move. Pass `canto_x` and
+`canto_y` to ride on to that tile before it waits — rescue someone and carry them out of
+range in one call. Leave them out and it waits where it stands. A destination that is out of
+reach or occupied is refused in the result and the unit stays put.
+
+#### Carried units in `fe7_state`
+
+A rescued unit shares its carrier's tile. `fe7_state` tags the pair `CARRYING player #N` and
+`CARRIED by player #N (cannot act until dropped)`. A carried unit cannot be selected, is not
+attacked, and comes back spent on the turn it is dropped. Carrying halves the carrier's Skl
+and Spd, so do not fight with a full saddle.
 
 #### Seeing what a unit is actually offered
 
@@ -214,47 +316,29 @@ menu it names every entry and presses nothing:
 
 ```
 No Seize entry on unit #0's action menu at (11,2) — the menu holds
-[attack, rescue, item, trade*, wait]. Nothing was pressed; unit unspent at (11,2).
+[attack, talk, item, trade*, wait]. Nothing was pressed; unit unspent at (11,2).
 ```
 
-A trailing `*` marks an action that does **not** consume the unit's turn. Reach for this
-whenever you want to know what a tile really offers.
+A trailing `*` marks a free action. Use it to check that Talk really is offered before you
+spend a turn walking the wrong speaker over.
 
 > ⚠️ **Do not probe with it where Seize would genuinely be offered** — a lord standing on a
 > gate or throne. There it does not just look: it moves the highlight onto Seize and presses
 > `A`, which commits, and on a Seize chapter that ends the chapter. On a Seize chapter that
 > is of course the point — but only when you mean it.
 
-#### How far each of the 22 actually is
+#### What is still missing
 
-| Tier                                       | Actions                                                         | What is missing                                                                                                    |
-| ------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Shallow** — press `A` and it happens     | Visit, Door, Chest, Ride, Dismount, Status                      | Only a confirm-by-effect signal: which memory field proves it worked                                               |
-| **Medium** — opens a unit target selection | Rescue, Drop, Take, Give, Talk, Dance, Play, Support            | The target-cycling machinery exists but is proven only on the staff and attack paths; plus the same confirm signal |
-| **Deep** — a whole new screen to drive     | Trade, Supply/convoy, Armory, Vendor, Secret Shop, Arena, Steal | The entire flow                                                                                                    |
+| Not available | Consequence |
+|---|---|
+| **Armory, Vendor, Secret Shop** | Nothing can be bought. Weapon uses are a resource for the whole campaign: do not burn a Silver Lance on a soldier an Iron Lance would kill. New weapons come only from chests and enemy drops; trading moves them between units, and stealing takes items, never weapons. |
+| **Supply** (Merlinus's convoy) | Items cannot be fetched from or stored in the convoy on the map. |
+| **Arena** | No arena fights. |
+| `ride`, `dismount`, `status` | Accepted, but still press `A` and report a raw delta with no verdict. |
 
-#### What actually goes wrong if you try one
-
-- **You cannot invoke the medium and deep tiers.** `fe7_act`'s `action` stops at the shallow
-  tier. The probe tells you what is there; it does not let you do it. Plan around it and
-  move on. In campaign terms this means: **no shopping, no trading, no rescuing, no
-  recruiting by Talk.** Units that can only be recruited by talking will not be recruited;
-  treat them as enemies or avoid them. Weapons cannot be bought, so **weapon uses are a
-  resource for the whole campaign** — do not burn a Silver Lance on a soldier an Iron Lance
-  would kill.
-- **A shallow-tier action reports a delta, not a verdict.** Read what changed and judge; take
-  a screenshot if the delta is ambiguous.
-- **Reaching a screen is not completing it.** Everything except `Wait` backs out with `B`, so
-  landing on Rescue's target select by accident is recoverable.
-- **Confirming is the real gap.** For most of the 22 nothing is known about which memory
-  changes prove success. An action can work perfectly and the tool still report that nothing
-  happened, which invites doing it twice. Check `fe7_state` (and a screenshot) before
-  repeating anything.
-- **A menu entry is not a guarantee.** The game offering Rescue means Con and Aid allow it;
-  it says nothing about whether your intended target is in range.
-
-**When a menu offers something you cannot invoke, that is a known gap, not a mistake on your
-part.** Work around it and keep playing. You have a chapter to win.
+**Recruit everyone you can.** A character who joins by Talk is no longer out of reach: check
+your chapter's recruit table, bring the named speaker next to them, and use `talk`. Until
+then, do not kill them.
 
 ---
 
@@ -339,6 +423,8 @@ part.** Work around it and keep playing. You have a chapter to win.
 - **The field menu holds Suspend directly above End.** Never open the field menu with raw
   presses; `fe7_end_turn` is the only sanctioned way to end a turn. Suspend save-quits the
   chapter to the title screen, and you then have to find your way back into the chapter.
+  The one exception is a deliberate restart after two or more units have died; see "When
+  the chapter is lost".
 
 ---
 
@@ -414,17 +500,18 @@ follow "When you get stuck" and keep working until the next chapter has loaded.
 bad turn, not to retry a coin-flip attack, not because the board looks wrong. The states
 you save are a **fail-safe for the human**, who will decide whether to use them. The same
 goes for `mgba_reset` and anything else that rewinds a chapter that is still in play. The
-one exception is the game's own Restart Chapter **after a game over**, which is how you play
-a lost chapter again. A campaign that quietly reloads to undo a bad turn is not a campaign,
+one exception is the game's own Restart Chapter, **after a game over or after two or more
+units have died on an attempt below the fourth**, which is how you play a lost chapter again. A campaign that quietly reloads to undo a bad turn is not a campaign,
 and it would make the strategy file a lie.
 
 ---
 
 ## Ending the session
 
-Every session ends with three things: your chapter's section of `CURRENT_RUN_STRATEGY.md`
-filled in, a final screenshot, and a **result line** as the last line of your final message. The loop reads the result line, so
-it must be exactly:
+Every session ends with four things: `run_state.json` handed over to the next chapter, your
+chapter's section of `CURRENT_RUN_STRATEGY.md` filled in, a final screenshot, and a **result
+line** as the last line of your final message. The loop reads the result line, so it must be
+exactly:
 
 ```
 PLAYTHROUGH_RESULT=WON
@@ -456,23 +543,13 @@ session on the same chapter.
    If it takes you to the title screen, follow "When you get stuck" to get back into the game.
 
 3. **Save the state** (see above).
-4. **Update `roster.json`** (see below).
+4. **Hand over `run_state.json`** (see below).
 5. **Write the summary** (see below).
 6. **Final message**, ending in `PLAYTHROUGH_RESULT=WON`.
 
-### `roster.json` — the dead and the unrecruited
+### Handing over `run_state.json`
 
-The stream overlay draws two lists that only you can maintain: who has **died** and who you
-**failed to recruit**. They live in `roster.json` at the top of the playthrough folder:
-
-```json
-{
-  "dead": ["Sain"],
-  "unrecruited": ["Dorcas"]
-}
-```
-
-At the end of the chapter, before writing the summary:
+Once the next chapter has loaded, make these changes to `run_state.json`, and no others:
 
 - **`dead`**: append every one of _your_ units that died this chapter. Use the name the game
   shows, one string each. The `FALLEN:` line of `fe7_wait` / `fe7_end_turn` and your own
@@ -481,17 +558,36 @@ At the end of the chapter, before writing the summary:
 - **`unrecruited`**: compare your chapter's **Recruits** table in `CURRENT_RUN_STRATEGY.md`
   against who actually joined. Append every recruitable unit that did not. A unit you failed
   to recruit and then killed goes here, not in `dead` — it was never yours.
-- **Append only, in the order things happened.** Never remove or reorder an entry; the
-  overlay shows them left to right in the order written. If the file does not exist yet,
-  create it with both lists. Keep it valid JSON: the overlay ignores the whole file if it
-  cannot parse it.
+- **`completed`**: append `{ "chapter": <current_chapter>, "attempts": <attempts>,
+  "session": <your tag> }`.
+- **`current_chapter`**: set it to the heading of the chapter that has just loaded, copied
+  verbatim from `CURRENT_RUN_STRATEGY.md`. The title card you screenshotted names it. Gaiden
+  chapters (`7x`, `13x`, …) only happen when their condition was met, so go by what the game
+  loaded, not by the next heading in the file.
+- **`attempts`**: set it to `0`. The next session adds 1 when it starts.
+
+The overlay draws `dead` and `unrecruited` left to right in the order written, so append
+only.
 
 ### When the chapter is lost
 
 Screenshot the game-over screen, then play the chapter again. Press through the game over,
 and from the title screen pick the save slot already in use and choose Restart Chapter.
-Units that fell in the lost attempt are back, so do not add them to `roster.json`. Work out
-what went wrong, change the plan, and keep going until the chapter is won.
+Units that fell in the lost attempt are back, so do not add them to `dead`. Work out what
+went wrong, change the plan, and keep going until the chapter is won.
+
+**Every restart is a new attempt.** Before playing again, add 1 to `attempts` in
+`run_state.json` and adjust your chapter's Agent notes in `CURRENT_RUN_STRATEGY.md` with
+what the lost attempt taught you, exactly as in "Before you start".
+
+**Restarting because two or more units died** (attempt count less than four; see "What
+actually ends a chapter"). There is no game-over screen in this case, so you have to leave
+the chapter yourself: screenshot the board, open the field menu and choose **Suspend**,
+which save-quits to the title screen, then pick the save slot already in use and choose
+**Restart Chapter**, not Resume Chapter. No tool drives these screens; use
+`mgba_press_buttons` and a screenshot after each press. This is the one situation where
+opening the field menu with raw presses and choosing Suspend is allowed. Still never load a
+state and never use `mgba_reset`.
 
 ### When you cannot make progress
 
@@ -509,8 +605,6 @@ the whole playthrough, so what you write is read by the next session and by any 
 at your chapter. Three places take your writing:
 
 1. **Your chapter's section.**
-   - Bump the `attempts:` counter by one for every attempt you made at the chapter, lost
-     ones included.
    - Fill in **Objectives** with the win condition as the game stated it, if it is still
      the placeholder.
    - Write **Agent notes**: **brief**, about ten lines. Not a play-by-play; what the next

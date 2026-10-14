@@ -85,7 +85,10 @@ cycling is expected but **undemonstrated**.
 
 ### 2. Item / staff / trade actions — [both]
 
-**Status: MAPPED (2026-08-27). The memory half is done; the tool half is not built.**
+**Status: DONE (2026-10-01).** Staff and item have been `fe7_act` actions for a while; trade is
+now `fe7_act(action:'trade')`. The notes below are the 2026-08-27 mapping, kept for history —
+where they disagree with `RAM.md` "The trade screen" (the partner prompt, the cursor bytes),
+`RAM.md` is right.
 Full write-up in `RAM.md` → "Unit actions — staff, item, trade"; working log in
 `attempts/8.27.2026_staff_item_trade.md`.
 
@@ -184,11 +187,25 @@ RAM.md both record as a whole class of past bugs.
 
 ### 6. The rest of the contextual action menu — [tool]
 
-`fe7_act` now has `seize`, built on reading each menu entry's ROM command pointer. The same
-primitive should give **Visit, Door, Chest, Talk, Rescue, Drop**. Each needs exactly one
-observation of a menu containing it to learn its pointer, after which it is a constant.
-Known so far: seize `0x08B95314`, attack `0x08B95338`, item `0x08B9562C`, trade `0x08B95650`,
-wait `0x08B956BC`.
+**Mostly CLOSED 2026-10-01.** `fe7_act` now drives, with a verdict read from memory: talk,
+dance/play (including the ring sub-menu), rescue, drop, take, give, trade, steal, support,
+visit, door and chest — on top of wait, attack, staff, item and seize. Mechanism and offsets
+are in `RAM.md` → "The target list", "Rescue pairs, canto and free actions", "The trade
+screen". Each was tested against the live game from a save state; the cheats used to set up
+a test (teleporting a unit, writing support counters, rings, a class pointer) are named there.
+
+Still open:
+
+- **Armory, Vendor, Secret Shop, Supply, Arena** — the five commands that open a whole screen.
+  Nothing can be bought, so weapon uses are still a campaign-long resource.
+- **Ride, Dismount, Status** — accepted, but press `A` and report a delta with no verdict.
+- **Dance with a real Ninian.** The Dance command was tested by writing the Dancer class onto
+  Nils. Re-run once on a Hector Ch.21+ state.
+- **Chest with a full inventory** is refused up front instead of being driven through the
+  send/discard prompt, because `fe7_inventory_full` identifies the receiver from the battle
+  structs, which a chest never fills.
+- **Rescuing or trading with a green NPC**, and a second handler-table pointer for each prompt
+  not yet read (Talk, Support, Give).
 
 ### 7. Terrain content beyond Ch.22 and Ch.7 — [mem]
 

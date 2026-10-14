@@ -73,7 +73,7 @@ save gets reverted and the next run starts fresh.
 |---|---|
 | `fe7_state` | The whole battlefield in one call. Start every turn with it. `brief: true` when you only need positions and HP. |
 | `fe7_reachable` | Where one unit can legally go, as a cost map with allies, greens and enemies marked. |
-| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit an action. On an attack, pass `weapon_slot` to swing a chosen inventory weapon (the Rapier, the Silver Lance); without it the EQUIPPED weapon, slot 0, is always used, and the game re-equips whatever you pick, so re-read `fe7_state` for slot numbers afterwards. Five are confirmed by effect: `wait` / `attack` / `staff` / `item` / `seize`. Six more are the **shallow tier** — `visit` / `door` / `chest` / `ride` / `dismount` / `status` — which press A and report the before/after delta instead of claiming success. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
+| `fe7_act` | One unit's whole turn: select, walk to a tile, and commit an action. On an attack, pass `weapon_slot` to swing a chosen inventory weapon (the Rapier, the Silver Lance); without it the EQUIPPED weapon, slot 0, is always used, and the game re-equips whatever you pick, so re-read `fe7_state` for slot numbers afterwards. Eighteen actions report a verified result: `wait` / `attack` / `staff` / `item` / `seize`, the target-selection commands `talk` / `dance` / `play` / `rescue` / `drop` / `take` / `give` / `trade` / `steal` / `support`, and the map-object commands `visit` / `door` / `chest`. `take`, `give` and `trade` are free actions that leave the unit mid-turn, and mounted units can `canto_x`/`canto_y` on after most of them. `ride` / `dismount` / `status` are accepted but unverified. With `action:'seize'` it also doubles as a **menu probe** — see "The 27 actions" below. |
 | `fe7_terrain` | The WHOLE board's terrain in one call, plus `find` to locate tiles by name. Use it at the start of a chapter — this is how you find the gate, the villages and the forts. |
 | `fe7_threat` | The enemy DANGER MAP: for every tile, how many enemies can attack it next enemy phase, and which enemies threaten each of your units. Pure read, computed from ROM Move/cost tables. Pass `verify: slot` to cross-check one enemy against the game's own grid. |
 | `fe7_inspect` | What is on ONE tile, read off the cursor. Only needed for something `fe7_terrain` cannot answer; note a unit standing on a tile masks its terrain, which `fe7_terrain` does not suffer from. |
@@ -140,19 +140,63 @@ and a folder of unlabelled PNGs is nearly useless afterwards.
 **Keep every screenshot. Never delete or overwrite one.** They are part of the run's record
 and are reviewed after the run alongside the notes.
 
-### The 27 actions — what is known, and what still is not
+### The 27 actions — what you can do, and the few you cannot
 
-The game offers **27 unit actions**. `fe7_act` takes eleven: five confirmed by effect —
-`wait`, `attack`, `staff`, `item`, `seize` — and the six shallow-tier ones, which press A and
-report a delta rather than a verdict. All 27 are catalogued in `RAM.md`; you do not need it to play.
+The game offers **27 unit actions**. `fe7_act` drives **18 of them with a verified result**,
+three more unverified, and cannot yet do the five that open a shop, the convoy or the arena.
+All 27 are catalogued in `RAM.md`; you do not need it to play.
 
-Every command has a stable ROM pointer, and the tool layer reads a live menu and names each
-entry, so "what can this unit do on this tile" has an exact answer instead of a guess.
-Selecting any of the 27 is a solved problem — the layer can find an entry, confirm it by
-pointer and move the highlight onto it without ever pressing `A` on something it cannot name.
+Every command is found on the menu by its ROM pointer, and every target is picked from the
+game's own target list, read out of memory. Nothing is pressed on an entry or a target the
+tool could not name first, and each action below reports a verdict taken from what changed in
+memory, not from the absence of an error.
 
-**What is still missing is everything after that `A`.** Each action opens its own screen, and
-each needs a memory signal that proves it landed.
+#### What each action needs and what it proves
+
+| `action` | When the game offers it | What to pass | The result says |
+|---|---|---|---|
+| `talk` | The unit is **next to** a character it has a conversation with. The speaker matters as much as the tile. | `target_slot` + `target_faction` (`enemy` / `green` / `player`), or `target_x`/`target_y`. Optional when there is one candidate. | `RECRUITED … now PLAYER #N` when the character changed sides, or that it did not. |
+| `dance` / `play` | Ninian or Nils is next to an ally that has **already acted**. The two words are interchangeable. | The ally, as above. Add `item_slot` only to use one of the four rings instead of the plain dance. | `REFRESHED` — the ally's has-acted flag cleared, so it can act again. A ring buffs and does not refresh. |
+| `rescue` | Next to an ally whose Con is at most this unit's Aid. | The ally. | `RESCUED` — this unit now carries it. |
+| `drop` | The unit is carrying someone and a free tile is adjacent. | `target_x`/`target_y` of the tile. | `DROPPED` and where the unit now stands. It cannot act until next turn. |
+| `take` / `give` | Next to an ally, with a carried unit to move between you. | The ally. | Who is carrying whom now. **Free action** — see below. |
+| `trade` | Next to another **player** unit. | The partner, plus `item_slot` (your slot to give) and/or `take_item_slot` (their slot to take). Both together swap. | Both inventories, before and after. **Free action**, once per unit per turn. |
+| `steal` | A **thief** with a free slot, next to an enemy carrying an item. | The enemy slot; `item_slot` is the slot in the **enemy's** inventory. Weapons, tomes and staves cannot be stolen. | `STOLEN` and both inventories. |
+| `support` | Next to a support partner whose conversation is ready. | The partner. | `SUPPORT GAINED` and the support record. |
+| `visit` | Standing **on** an open village or house. | Nothing. | `VISITED`; a village also reads `CLOSED`, and a character or item gained is listed. |
+| `door` | **Next to** a door, with a Door Key or a thief's Lockpick. | Nothing. | `OPENED` and the tile that changed. |
+| `chest` | **On** a closed chest, with a Chest Key or a Lockpick, and a free inventory slot. | Nothing. | `OPENED` and the item gained. |
+
+`wait`, `attack`, `staff`, `item` and `seize` work as before.
+
+When the entry is not on the menu, the result prints the menu the game did offer and what that
+command requires. When you name a target the game does not offer, it backs out with the unit
+unspent and lists who it does offer.
+
+#### Free actions leave the unit mid-turn
+
+`take`, `give` and `trade` do **not** end the unit's turn. The game reopens that unit's menu
+and waits. Finish with **another `fe7_act` for the same unit at its current tile** — `wait`,
+`drop`, `attack`, `item`. It can no longer move. If you act with a different unit first, or
+end the turn, that unit's turn simply ends where it stands.
+
+This is what makes the classic plays work: trade a weapon across and then attack with it;
+take a carried unit and drop it on the far side in the same turn.
+
+#### Mounted units keep their leftover Move
+
+After `talk`, `rescue`, `drop`, `steal`, `support` or `visit`, a mounted unit (cavalier,
+paladin, pegasus, wyvern, nomad, troubadour) is handed its leftover Move. Pass `canto_x` and
+`canto_y` to ride on to that tile before it waits — rescue someone and carry them out of
+range in one call. Leave them out and it waits where it stands. A destination that is out of
+reach or occupied is refused in the result and the unit stays put.
+
+#### Carried units in `fe7_state`
+
+A rescued unit shares its carrier's tile. `fe7_state` tags the pair `CARRYING player #N` and
+`CARRIED by player #N (cannot act until dropped)`. A carried unit cannot be selected, is not
+attacked, and comes back spent on the turn it is dropped. Carrying halves the carrier's Skl
+and Spd, so do not fight with a full saddle.
 
 #### Seeing what a unit is actually offered
 
@@ -161,46 +205,31 @@ menu it names every entry and presses nothing:
 
 ```
 No Seize entry on unit #0's action menu at (11,2) — the menu holds
-[attack, rescue, item, trade*, wait]. Nothing was pressed; unit unspent at (11,2).
+[attack, talk, item, trade*, wait]. Nothing was pressed; unit unspent at (11,2).
 ```
 
-A trailing `*` marks an action that does **not** consume the unit's turn. Reach for this
-whenever you want to know what a tile really offers. If it names something you needed and
-could not invoke, write a note that names the command exactly.
+A trailing `*` marks a free action. Use it to check that Talk really is offered before you
+spend a turn walking the wrong speaker over.
 
 > ⚠️ **Do not probe with it where Seize would genuinely be offered** — a lord standing on a
 > gate or throne. There it does not just look: it moves the highlight onto Seize and presses
 > `A`, which commits, and on a Seize chapter that ends the chapter. On a Seize chapter that
 > is of course the point — but only when you mean it.
 
-#### How far each of the 22 actually is
+#### What is still missing
 
-| Tier | Actions | What is missing |
-|---|---|---|
-| **Shallow** — press `A` and it happens | Visit, Door, Chest, Ride, Dismount, Status | Only a confirm-by-effect signal: which memory field proves it worked |
-| **Medium** — opens a unit target selection | Rescue, Drop, Take, Give, Talk, Dance, Play, Support | The target-cycling machinery exists but is proven only on the staff and attack paths; plus the same confirm signal |
-| **Deep** — a whole new screen to drive | Trade, Supply/convoy, Armory, Vendor, Secret Shop, Arena, Steal | The entire flow. Trade is written but unregistered because its partner-select never matched expectations |
+| Not available | Consequence |
+|---|---|
+| **Armory, Vendor, Secret Shop** | Nothing can be bought. Weapon uses are a resource for the whole campaign: do not burn a Silver Lance on a soldier an Iron Lance would kill. New weapons come only from chests and enemy drops; trading moves them between units, and stealing takes items, never weapons. |
+| **Supply** (Merlinus's convoy) | Items cannot be fetched from or stored in the convoy on the map. |
+| **Arena** | No arena fights. |
+| `ride`, `dismount`, `status` | Accepted, but still press `A` and report a raw delta with no verdict. |
 
-#### What actually goes wrong if you try one
+**Recruit everyone you can.** A character who joins by Talk is no longer out of reach: check
+your chapter's recruit table, bring the named speaker next to them, and use `talk`. Until
+then, do not kill them.
 
-- **You cannot invoke the medium and deep tiers.** `fe7_act`'s `action` stops at the shallow
-  tier. The probe tells you what is there; it does not let you do it. Plan around it, record
-  it, and move on.
-- **A shallow-tier action reports a delta, not a verdict.** Read what changed and judge; take
-  a screenshot if the delta is ambiguous. If it worked, that delta is the confirm signal
-  nobody has recorded yet — note it.
-- **Reaching a screen is not completing it.** Everything except `Wait` backs out with `B`, so
-  landing on Rescue's target select by accident is recoverable.
-- **Confirming is the real gap.** For most of the 22 nothing is known about which memory
-  changes prove success. An action can work perfectly and the tool still report that nothing
-  happened, which invites doing it twice. Check `fe7_state` (and a screenshot) before
-  repeating anything.
-- **A menu entry is not a guarantee.** The game offering Rescue means Con and Aid allow it;
-  it says nothing about whether your intended target is in range.
-
-**When a menu offers something you cannot invoke, that is a known gap, not a mistake on your
-part.** Record it with `fe7_note` *as it comes up in play*, naming the unit, the tile, the
-command and what you did instead. Do not go hunting through all 22 — you have a chapter to win.
+When a menu offers one of the missing five and you needed it, record it with `fe7_note` *as it comes up in play*, naming the unit, the tile, the command and what you did instead.
 
 ---
 
@@ -308,7 +337,7 @@ do not need to do anything, and you should **not** re-report tool failures with 
 they are already captured.
 
 **`fe7_note` — this is your job.** It catches what automatic logging structurally cannot: a
-tool that does not exist never fails. If there is no rescue action, nothing errors; you just
+tool that does not exist never fails. If there is no armory action, nothing errors; you just
 quietly never try, and the log looks clean. **Only you know you wanted something that was
 not there.** It is also where every screenshot gets its label.
 
@@ -328,20 +357,20 @@ game.
 
 A note becomes a backlog item, so it needs enough detail to implement from.
 
-**Useless:** `"trade didn't work"`
+**Useless:** `"couldn't buy anything"`
 
-**Useful:** `kind: "missing_action"`, detail: `"Bartre at 4/40 was standing next to Lyn, who
-carries a spare vulnerary. I wanted to hand it over so he could heal himself next turn.
-There is no trade action, so he stayed at 4 HP and I retreated him instead, wasting the
-turn."`, wanted: `"fe7_act(slot, x, y, action: 'trade', target_slot, item_slot) — or a
-standalone tool, since trading doesn't consume the action."`
+**Useful:** `kind: "missing_action"`, detail: `"Kent's last Iron Lance broke on turn 6. He ended
+turn 7 standing on the armory at (13,7) and the menu held [armory, item, wait]. I wanted to
+buy a Javelin so he could answer the archers. There is no armory action, so he fought the
+rest of the chapter with a sword at a triangle disadvantage."`, wanted: `"fe7_act(slot, x, y,
+action: 'armory', buy: [item ids]) — it should report gold before and after."`
 
 Name the units, the tiles, what you were trying to achieve, and what you did instead. The
 sketch of the call you wish existed is the most useful part.
 
 **Name the command exactly.** The menu probe gives you the game's own name for every entry, so
-a note can say *"the menu at (11,2) held `[attack, rescue, item, trade*, wait]` and I wanted
-Rescue"* rather than *"I wish I could pick him up"*. That turns a wish into a specification.
+a note can say *"the menu at (13,7) held `[armory, item, wait]` and I wanted
+Armory"* rather than *"I wish I could buy a lance"*. That turns a wish into a specification.
 
 ---
 

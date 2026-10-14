@@ -64,6 +64,7 @@ playthroughs/*/states/
 playthroughs/*/sessions/*.mcp.json
 playthroughs/STOP
 archive/old_states/
+archive/action_test_states/*.ss
 
 # Overlay: replay scratch, and portrait sprites (ripped assets, not ours to commit)
 overlay/.replay*/

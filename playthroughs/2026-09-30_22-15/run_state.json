@@ -1,0 +1,53 @@
+{
+  "mode": "hector",
+  "current_chapter": "Chapter 19 — The Dread Isle",
+  "attempts": 2,
+  "completed": [
+    {
+      "chapter": "Chapter 13 — In Search of Truth",
+      "attempts": 1,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 14 — False Friends",
+      "attempts": 1,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 15 — Talons Alight",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 16 — Noble Lady of Caelin",
+      "attempts": 1,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 17 — Whereabouts Unknown",
+      "attempts": 3,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 18 — Pirate Ship",
+      "attempts": 8,
+      "session": "s06"
+    }
+  ],
+  "dead": [
+    "Rebecca",
+    "Dorcas",
+    "Merlinus",
+    "Sain",
+    "Oswin",
+    "Marcus"
+  ],
+  "unrecruited": [
+    "Guy",
+    "Erk",
+    "Priscilla",
+    "Raven",
+    "Lucius",
+    "Canas"
+  ]
+}

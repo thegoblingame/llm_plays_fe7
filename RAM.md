@@ -1354,6 +1354,136 @@ generalises to attack target cycling.
 > **initial** partner and then goes stale. It stayed on Raven across three `Right` presses
 > while the real highlight moved to two other units. Location is not semantics; use (b).
 
+### The target list — one mechanism behind every unit/tile prompt — Confirmed (2026-10-01)
+
+Method (b) above works but needs two targets to produce a delta, and says nothing about who
+the *other* candidates are. The game keeps the whole answer in a fixed place. Found on Lyn
+Ch.8 by opening Play with one target and searching EWRAM for the bytes `[x, y, uid]` of the
+only possible target: exactly one hit.
+
+| Address | Holds |
+|---|---|
+| `0x0203DCF8` | the **target list**: 64 entries × 12 bytes |
+| `0x0203DFF8` | u32 **count** of valid entries (directly after the list) |
+
+```
+entry  +0x00  s8   x
+       +0x01  s8   y
+       +0x02  u8   uid — the unit's +0x0B byte (player 0x01+, green 0x41+, enemy 0x81+); 0 for a TILE target
+       +0x03  u8   extra
+       +0x04  u32  next   <- Right / Down goes here
+       +0x08  u32  prev   <- Left / Up goes here
+```
+
+The links form a ring, and **the ring, not the array order, is the cycle order** (a 3-entry
+Trade list read `[0]→[2]→[1]→[0]`). The list is scratch space: every menu-usability check
+rebuilds it, so entries past `count` are stale and the list alone does not prove a prompt is up.
+
+**What makes it live is the selection proc.** While any target prompt has focus, exactly one
+proc in the UI arena carries ROM script pointer `0x08B9A92C` at `+0x00`:
+
+```
+search_memory(bytes=[0x2C,0xA9,0xB9,0x08], region="EWRAM", align=4)
+    -> exactly 1 match while a target prompt is on screen, 0 otherwise   <- the state gate
+proc +0x2C  u32  ROM pointer to the prompt's handler table — identifies WHICH prompt
+proc +0x30  u32  pointer to the highlighted target-list entry
+```
+
+Handler-table pointers observed (stride `0x20`; the rest are not yet read):
+
+| Prompt | `+0x2C` | Targets |
+|---|---|---|
+| Play (and Dance) | `0x08B95B98` | adjacent allies that have already acted |
+| Steal | `0x08B95BF8` | adjacent enemies with something stealable |
+| Trade | `0x08B95C78` | adjacent player units |
+| Take | `0x08B95CD8` | adjacent allies carrying someone |
+| Drop | `0x08B95CF8` | **tiles** (uid 0) |
+| Rescue | `0x08B95D18` | adjacent allies light enough to carry |
+
+`fe7_act` uses this for talk, dance/play, rescue, drop, take, give, trade, steal and support:
+it reads the list, refuses a target that is not in it (and prints who is), cycles with `Right`
+until `+0x30` points at the wanted entry, and only then presses `A`.
+
+> **The live cursor does NOT move in a target prompt.** `0x0202BBCC` stays on the acting unit
+> while the on-screen hand jumps between targets — the prompt draws its own cursor. This is
+> why the first `fe7_trade` concluded Trade "opens the trade screen directly": it was looking
+> for the cursor on an ally, and the buffer read an item name (the partner's inventory window,
+> which the prompt paints). Trade has a partner prompt like everything else.
+
+### Rescue pairs, canto and free actions — the `+0x0C` bits — Confirmed (2026-10-01)
+
+| Low byte of `+0x0C` | Meaning |
+|---|---|
+| `0x01` | selected / hidden. Also set **permanently** on a carried unit. |
+| `0x02` | spent |
+| `0x10` | **carrying** someone; `+0x1B` is the passenger's uid |
+| `0x20` | **being carried**; `+0x1B` is the carrier's uid; x,y follow the carrier |
+| `0x40` | has moved. With `0x02` clear and `0x01` set (`0x41`, `0x51`) the unit is in **canto** |
+
+Observed sequence, Rath (nomad) rescuing Lyn then Lucius taking and dropping her:
+
+```
+Rath   0x00 -> 0x01 (selected) -> 0x51 after Rescue (canto, carrying), +0x1B = 01 -> 0x52 after the canto Wait
+Lyn    0x00 -> 0x21, +0x1B = 05, position = Rath's
+Lucius 0x01 -> 0x11 after Take (+0x1B = 01), menu reopens -> 0x02 after Drop
+Lyn    0x23 while carried by Lucius -> 0x02 on the tile she was dropped on (spent this turn)
+```
+
+**Canto.** After Rescue, Drop, Talk, Visit and the like a mounted unit is handed its leftover
+Move: the range repaints, `A` on a tile opens a ONE-entry menu `[Wait]`, and `A` commits.
+`B` does nothing there. A one-entry menu cannot be found by `locateMenu` (no index to move),
+which is fine — there is nothing to choose.
+
+**Free actions end on `B`.** After Take, Give or Trade the action menu reopens with the
+command removed (Trade is offered once per unit per turn; Give is not offered after a Take).
+The unit can still attack, drop, use an item or wait, **but it cannot move, and `B` on that
+menu ends its turn** (foot unit: `0x11 -> 0x12`) or drops a mounted unit into canto (`0x41`).
+A free action that changed nothing (trade screen opened and closed) leaves `B` unwinding normally.
+
+### The trade screen — proc `0x08B942F8` — Confirmed (2026-10-01)
+
+```
+search_memory(bytes=[0xF8,0x42,0xB9,0x08], region="EWRAM", align=4)  -> the trade proc, only while the screen is up
++0x2C  u32  acting unit's struct   (column 0)
++0x30  u32  partner's struct       (column 1)
++0x34  u8[6] + u8[6]   which rows hold an item, per column
++0x41  u8   cursor column      +0x42  u8  cursor row
++0x43  u8   picked column      +0x44  u8  picked row      +0x45  u8  1 while an item is picked up
+```
+
+`A` on an item picks it up and jumps the cursor to the other column's first empty row; `A`
+again puts it down there. Moving the cursor onto an item first makes the second `A` a swap.
+Both unit structs are rewritten the moment the second `A` lands; `B` then leaves the screen.
+A child proc (script `0x08B942E0`) mirrors the two cursor bytes at the same offsets.
+
+### Steal, the ring sub-menu, Support — Confirmed (2026-10-01)
+
+- **Steal** opens the target prompt, then a list of the enemy's **whole** inventory in
+  inventory order, highlight on entry 0. `A` on a weapon, tome or staff raises a help box
+  ("Weapons, magic, and staves can't be stolen.") that swallows input until dismissed. `A` on
+  an item (type byte > 7 in the item table) steals it: it leaves the enemy's struct and lands
+  in the thief's first empty slot. Not offered at all to a thief carrying five items.
+- **Dance/Play with a ring.** If the dancer carries any of `0x7C` Filla's Might, `0x7D` Ninis's
+  Grace, `0x7E` Thor's Ire, `0x7F` Set's Litany, the menu entry opens a sub-menu before the
+  target prompt: entry 0 is the plain Dance/Play, then one entry per ring in inventory order.
+  A ring spends one use and does not clear the target's spent flag. Tested by writing two
+  rings into Nils's inventory. The Dance command itself (`0x08B95410`) was tested by writing
+  the Dancer class pointer (`0x08BE165C`, class `0x40`) onto Nils — a real Ninian is still to do.
+- **Support.** `+0x32..+0x38` are the seven support counters, in the order of the character's
+  ROM support list (char struct `+0x2C` → 7 partner IDs, 7 starting values, 7 growths, count);
+  `+0x39` has one bit per partner whose conversation has been seen. The Support entry appears
+  when a counter sits exactly at its cap (`0x50` for C). The conversation moves it to `0x51`
+  and sets the bit, on both units. Tested by writing `0x50` into Matthew's and Hector's counters.
+
+### Visit, Door, Chest — the confirm signals — Confirmed (2026-10-01)
+
+| Command | Where the unit stands | What changes |
+|---|---|---|
+| Visit (village) | on the tile | terrain `0x03` → `0x04` (closed); unit spent; a recruit appears in the player array |
+| Visit (house `0x05`) | on the tile | nothing on the map; unit spent |
+| Door | next to the door | door tile `0x1E` → floor `0x17`; one key/lockpick use |
+| Chest | on the tile | terrain `0x21` (closed) → `0x20` (open); the item lands in the inventory; one use |
+
 ### A level-up blocks the spent flag — Confirmed
 
 After the second heal, `+0x0C` stayed at `0x01` and the staff uses stayed unchanged across two
@@ -1492,9 +1622,13 @@ Offsets are relative to the start of each 72-byte entry.
 0x17  u8    Def
 0x18  u8    Res
 0x19  u8    Lck
-0x1A  u8[4] unknown        (zeros in all observations)
+0x1A  u8    unknown        (zero in all observations)
+0x1B  u8    rescue partner uid (carrier <-> passenger); 0 if none — see "Rescue pairs"
+0x1C  u8[2] unknown        (zeros in all observations)
 0x1E  u16[5] inventory     -> 5 slots, see encoding below
 0x28  u8[8] weapon ranks   -> inferred, see below
+0x32  u8[7] support counters, in ROM support-list order
+0x39  u8    support bits   -> one per partner whose conversation has been seen
 0x3C  u32   pointer        -> this unit's sprite record (see Sprite table)
 0x43  u8    unknown, persists across phases -- NOT has-acted (see below)
 0x45  u8    unknown, companion to 0x43
