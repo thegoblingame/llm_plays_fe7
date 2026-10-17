@@ -32,7 +32,7 @@ Every entry is tagged with how much it can be trusted:
 | Player unit array — first entry | `0x0202BD50` | Confirmed |
 | Enemy unit array — first entry | `0x0202CEC0` | Confirmed |
 | **Green / NPC array — first entry** | `0x0202DCD0` | Confirmed |
-| Gold — **candidate only** | `0x0202BC00` | **Unverified** |
+| **Gold** (u32) | `0x0202BC00` | Confirmed |
 | Game mode byte | `0x02025080` | Unverified |
 | Menu structs | **dynamic** — `0x020251E8` / `0x020252C0` / `0x02025470` seen | see Menus |
 | **Combat forecast — `gBattleActor`** | `0x0203A3F0` | Confirmed |
@@ -151,15 +151,24 @@ already cleared to `0x00`. So a player unit's has-acted flag is wiped when the *
 begins — which is why sampling after a full turn transition never shows it set, and is exactly
 what misled the earlier `+0x43/+0x45` conclusion.
 
-### Gold — `0x0202BC00` is a CANDIDATE ONLY (Unverified)
+### Gold — `0x0202BC00`, u32 (Confirmed 2026-10-14)
 
-In Ch.22 Hector mode, `+0x00` held `0x00001CA8` (7336), a plausible gold total, and it was the
-**only** address in EWRAM holding that value — so it's a clean, unambiguous candidate.
+**Confirmed by spend-and-diff** at an on-map armoury. Before the purchase the address held
+`0x00019004` = **102404**, matching the shop's gold display exactly, and a 4-byte search of
+EWRAM and IWRAM for that value returned this one address and nothing else. Buying a Slim
+Lance (450G, sent to Merlinus because the buyer's inventory was full) moved it to
+`0x00018E42` = **101954**, the on-screen total, and `diff_memory(predicate="decreased")`
+showed it as the only address in EWRAM that dropped by the purchase price. Everything else in
+the diff was proc, menu and text-buffer churn.
 
-**It is not confirmed.** Gold is not displayed on the Preparations screen, so a labeling
-screenshot could not settle it. The decisive test is a **spend-and-diff**: snapshot, buy
-something at an on-map armoury or vendor, then `diff_memory(predicate="decreased")`. Do not
-treat this address as gold until that runs.
+Two earlier readings corroborate: 7336 at Ch.22 prep and 7000 at Ch.7x prep, both the only
+match in EWRAM at the time.
+
+Read it as a 32-bit value: 102404 does not fit in 16 bits. (Inferred: the surrounding
+`0x0202BBF0` page looks like the play-state struct, which would put gold at `+0x10`,
+consistent with the decomp layout for the GBA FE engines.) The gold display is not drawn
+on the Preparations screen, so a shop or the status screen is where a labelling check
+has to happen.
 
 ---
 
@@ -2262,7 +2271,7 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   so this is a rendering-only find; locating the encoding is still open, but the gameplay
   question it was blocking is answered
 
-- Gold
+- ~~Gold~~ — **RESOLVED 2026-10-14: `0x0202BC00`, u32**, by spend-and-diff at an armoury. See "Gold".
 - Chapter / map ID
 - ~~**Terrain / map tile array**~~ — **RESOLVED 2026-08-29: `0x0202E3E0`**, one of seven
   statically-addressed map layers catalogued at `0x0202E3DC`. Found exactly by the suggested
@@ -2746,7 +2755,8 @@ equivalent of.
   is a unit grid. The approach that should work next is a **narrow diff across an actual
   transfer**: get into the second stage of prep Trade (or a map `supply` command next to
   Merlinus), move one item, and diff. That was not reached.
-- **Gold is still Unverified.** `0x0202BC00` read `0x00001B58` = **7000** at Ch.7x prep, a
+- **Gold was still Unverified at this point** (since Confirmed, 2026-10-14 — see "Gold").
+  `0x0202BC00` read `0x00001B58` = **7000** at Ch.7x prep, a
   second plausible value after Ch.22's 7336, but Ch.7x has no shop, no arena and a disabled
   Fortune, so no spend-and-diff was possible. Two plausible values on two chapters is
   corroboration of a *kind* and is not proof. The decisive test is still a purchase.
@@ -2773,12 +2783,134 @@ toggle with A; verify by re-reading 0x0202BD50 + slot*0x48 + 0x0C (0x01 <-> 0x0B
 
 Deployment by writing, no UI:
 ```
-write32 0x0202BD50 + slot*0x48 + 0x0C = 0x00200001 to deploy, 0x0020000B to bench
+# The FULL +0x0C word is NOT a cross-chapter constant (see the Ch.31x note below).
+# The reliable signal is BIT 3 (0x08) of +0x0C: clear = deployed, set = benched.
+# Preserve the rest of the word; a UI toggle just XORs bits 1 and 3 (0x0A).
+deploy: read32 +0x0C, clear bits 1+3  (e.g. 0x0020000B -> 0x00200001 / 0x0000000B -> 0x00000001)
+bench : read32 +0x0C, set   bits 1+3  (e.g. 0x00000001 -> 0x0000000B)
 press Start; poll until 0x0202BC07 == 0x00 and 0x0202BC08 == 1
 re-read the whole array — it has been re-sorted and +0x0B renumbered
 ```
 
 ---
+
+## Pick Units / deployment — re-verified on Ch.31x "Battle Before Dawn", Hector Hard Mode — 2026-10-14
+
+**Everything above was Ch.7x only; this subsection re-runs it on a second chapter and mode
+(Ch.31x, Hector HM, 40-unit roster, deploy cap 10, prep screen). Where 31x agrees it upgrades
+the Ch.7x claim; where it differs it is called out.** The game was kept on the prep top menu
+throughout and restored from a save state afterwards — the chapter was NOT started, so the
+Start-transition half of the formation claim is still inherited from Ch.7x, not re-proven here.
+
+### The deployed/benched flag is NOT a fixed 32-bit value — use BIT 3 — Confirmed (two chapters)
+
+The single reliable signal across both chapters is **bit 3 (`0x08`) of unit `+0x0C`: clear =
+deployed, set = benched.** The full word is chapter-dependent:
+
+| | Ch.7x deployed | Ch.7x benched | Ch.31x deployed | Ch.31x benched (default) | Ch.31x benched (UI toggle) |
+|---|---|---|---|---|---|
+| `+0x0C` | `0x00200001` | `0x0020000B` | `0x00000001` | `0x00200009` | `0x0000000B` |
+
+So the high half-word `0x0020` is present on Ch.7x deployed units but ABSENT on Ch.31x deployed
+units, and the low nibble of a benched unit is `0x9` when benched at map-load but `0xB` when
+benched by a UI A-press (bit 1 differs). Reading the word as a literal constant (`== 0x00200001`)
+is what RAM.md's older Ch.7x recipe did and it would misclassify every Ch.31x unit. Observed
+oddities on 31x consistent with the existing high-bit note: slot 18 `0x00000008` (bit 3 set, bit
+0 clear — the "deployed-flag but no start slot" pattern), slots 17/35 `0x04210009`, slot 34
+`0x02200009`. Bit 3 was correct for every one of the 40 slots.
+
+### Toggling writes STRAIGHT into the player array, immediately — Confirmed (Ch.31x)
+
+There is no separate "selected to deploy" list or toggle byte. One A press on the highlighted
+unit:
+
+- **flips `+0x0C` bits 1 and 3 together (XOR `0x0A`) that same frame.** Ch.31x slot 6 (Lucius):
+  deployed `0x00000001` -> A -> benched `0x0000000B` -> A -> `0x00000001`, fully reversible.
+  Deploying a default-benched unit clears bit 3: slot 10 (Eliwood) `0x00200009` -> `0x00200001`.
+- **does NOT change `+0x10` (x).** A unit benched in the UI keeps its map x; a unit deployed in
+  the UI keeps `x = 0xFF`. Re-confirms the Ch.7x finding on 31x (benched Lucius kept x=8, deployed
+  Eliwood kept x=0xFF).
+- **decrements / increments the UI deployed-count byte** (CUR-3) immediately on a successful toggle.
+
+### The Pick Units list cursor — located by the +2 two-step, dynamic address — Confirmed (Ch.31x)
+
+Same shape as Ch.7x, DIFFERENT address (proc is allocated per instance — never hardcode):
+
+```
+CUR-0x03  u8   units currently deployed   (Ch.31x: 0x02025289 = 0x0A = 10)
+CUR-0x02  u8   DEPLOYMENT CAP               (Ch.31x: 0x0202528A = 0x0A = 10)
+CUR+0x00  u16  cursor index == PLAYER ARRAY SLOT   (Ch.31x: 0x0202528C)
+CUR+0x02  u16  index mirror                        (Ch.31x: 0x0202528E)
+```
+(CUR-0x01 read `0x04` on 31x, not the `0x01` seen on Ch.7x — not a constant, ignore it.)
+
+Located by: snapshot the narrow region `0x02025000..0x02025900` (2304 B, far less noisy than
+EWRAM-wide), press Down, diff `increased` width 1 refresh, press Down, diff again — the index and
+its mirror are the adjacent u16 pair that steps **+2 twice** (2-column grid). On 31x this returned
+`0x0202528C`/`0x0202528E` cleanly. Geometry: Up/Down = ∓2, Left/Right = ∓1, clamps (no wrap).
+`index == player array slot` confirmed two ways: the ASCII buffer at `0x0202A5B4` named the
+highlighted unit (index 6 -> "Lucius" = slot 6, 0 -> "Hector", 9 -> "Jaffar", 10 -> "Eliwood"),
+and an A at index 6 flipped exactly `0x0202BD50 + 6*0x48 + 0x0C` and nothing else in the arrays.
+
+### Deploy cap = 10 for Ch.31x, and it is a genuine gate — Confirmed
+
+`CUR-2` = `0x0A`. At 10/10, A on a benched unit / re-deploy is a no-op (observed). Cap's static
+ROM source still NOT found; only readable with Pick Units open (unchanged from Ch.7x).
+
+### Lord lock — the main character is un-deselectable via the UI — Confirmed (Ch.31x)
+
+Slot 0 = Hector (lord, cptr `0x08BDCE80`). With the cursor on him and 10/10 deployed, A was a
+**complete no-op**: `+0x0C` stayed `0x00000001`, count stayed `0x0A`, ASCII buffer unchanged. The
+UI refuses to bench the lord. A memory-write tool must keep the lord's bit 3 clear itself — the
+lock lives in the UI proc, not in the array.
+
+### Direct-write feasibility — viable, but ONLY with Pick Units CLOSED — Confirmed (Ch.31x)
+
+Writing `+0x0C` directly while Pick Units is **open** persists in the array and the proc does read
+the live flag to decide toggle direction, **but the UI deployed-count at CUR-3 is a separate tally
+that does NOT recompute from the array** — the two desync. Demonstrated: direct-wrote slot 6 to
+`0x0B` (benched); CUR-3 stayed `0x0A` (10) across a cursor move; then A on that slot (proc saw
+benched, tried to deploy, stale counter == cap 10) was a NO-OP, **stranding the unit benched with
+no UI way back**. So:
+
+- **Direct-write deployment is authoritative at Start** (proven on Ch.7x with no UI at all) — set
+  bit 3 of `+0x0C` per unit, respecting cap (<=10) and the lord yourself.
+- **Do it from the prep TOP menu (Pick Units closed), never under the open screen**, or the proc
+  counter desyncs and can strand units / miscount against the cap.
+
+### Leave-Pick-Units (B) re-sorts the array; tiles finalize at Start — Confirmed (Ch.31x)
+
+Pressing B (back to prep menu, chapter NOT started) compacts the array exactly as Ch.7x: deployed
+units to the low slots in relative order, benched pushed down, `+0x0B` renumbered to match. Ch.31x:
+after benching Jaffar (slot 9) and deploying Eliwood (slot 10) in the UI then pressing B, Eliwood
+(cptr `0x08BDCE4C`) moved up to slot 9 and Jaffar (cptr `0x08BDD568`) down to slot 10. **Only the
+character-data pointer `+0x00` is a stable identity.**
+
+**Coordinate reassignment does NOT happen at B.** After B, newly-deployed Eliwood still read
+`x = 0xFF` and newly-benched Jaffar still held its old tile `(3,5)`. The x/formation assignment
+finalizes at the **Start** transition (inherited from Ch.7x; not re-run here). So the "deployed
+unit inherits a freed start tile" step is a Start-time action, not a B-time one.
+
+### Formation start tiles for Ch.31x — the 10 default-deployed tiles (Confirmed read)
+
+The chapter's start-position list is realized as the deployed units' `+0x10/+0x11`. Ch.31x default
+deployment (slots 0-9): `(4,2) (10,4) (7,8) (2,7) (1,6) (9,5) (8,9) (3,3) (9,4) (3,5)`. The
+underlying ROM/RAM start-position table was NOT located (same gap as Ch.7x).
+
+### Reproduction recipe (Ch.31x values; addresses that are dynamic are flagged)
+
+```
+prep check: 0x0202BC07==0x40 && 0x0202BC08==0
+enter Pick Units: A on prep menu (highlight already on Pick Units; help text at 0x0202A5B4
+  reads "Select which units to field this battle...")
+locate cursor: snapshot 0x02025000 len 2304; Down; diff increased w1 refresh; Down; diff increased
+  -> adjacent u16 pair stepping +2 twice == CUR (0x0202528C on 31x), mirror CUR+2
+read: deployed=u8[CUR-3], cap=u8[CUR-2], slot=u16[CUR]
+toggle by UI: A, verify 0x0202BD50 + slot*0x48 + 0x0C bit 3 flips and CUR-3 changes
+lord lock: cursor on slot 0 (Hector), A -> no-op
+direct write (DO NOT while Pick Units open): from top menu, set/clear bit 3 of +0x0C
+leave: B -> array re-sorted, +0x0B renumbered, x finalized only at Start
+```
 
 # Enemy movement range — computable from ROM, no input needed — mapped 2026-09-10
 

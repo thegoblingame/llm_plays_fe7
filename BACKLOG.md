@@ -223,7 +223,7 @@ debug when it happens.
 
 ## P2 — curiosity tier
 
-- **Gold** — `0x0202BC00` is a candidate only, Unverified
+- ~~**Gold**~~ — `0x0202BC00` (u32) Confirmed 2026-10-14 by spend-and-diff at an armoury
 - **Chapter / map ID** — unlocated
 - **`+0x43` vs `+0x45`** — whether they encode different things (moved vs acted?); neither
   confirmed on a *player* unit
