@@ -162,15 +162,14 @@ function renderFeed(feed) {
 // ------------------------------------------------------------ tiles
 
 /*
- * The dead and unrecruited lists, drawn as portrait-over-name tiles on the two
- * images. The container is a fixed box (a fraction of its image), so as with
+ * The dead and unrecruited lists, drawn as portrait-only tiles (no names) on
+ * the two images. The container is a fixed box (a fraction of its image), so as with
  * the roster there is no feedback loop: render, measure once, shrink to fit.
  *
  * "cols": two fixed columns, rows grow (the milk carton).
  * "rows": two fixed rows, columns grow (the gravestone). CSS grid fills row by
  *         row only when it knows the column count, so that is set here.
  */
-const NAME_RATIO = 0.32; // name line height as a fraction of portrait size
 const MIN_TILE = 16;
 
 function fitTiles(container, count, axis) {
@@ -203,11 +202,8 @@ function fitTiles(container, count, axis) {
       getComputedStyle(document.documentElement).getPropertyValue("--portrait-size"),
     ) || 54;
 
-  // The portrait plus its name line must fit the cell in both directions.
-  const portrait = Math.max(
-    MIN_TILE,
-    Math.floor(Math.min(base, cellW, (cellH - 2) / (1 + NAME_RATIO))),
-  );
+  // The portrait must fit the cell in both directions.
+  const portrait = Math.max(MIN_TILE, Math.floor(Math.min(base, cellW, cellH)));
   const scale = Math.max(MIN_SCALE, Math.min(1, portrait / base));
   container.style.setProperty("--portrait-size", portrait + "px");
   container.style.setProperty("--row-scale", scale.toFixed(3));
@@ -219,11 +215,7 @@ function renderTiles(container, list, axis) {
   for (const u of items) {
     const tile = document.createElement("div");
     tile.className = "tile";
-    const name = document.createElement("span");
-    name.className = "tile-name";
-    name.textContent = u.name;
-    name.title = u.name;
-    tile.append(portraitNode(u), name);
+    tile.append(portraitNode(u));
     container.append(tile);
   }
   fitTiles(container, items.length, axis);

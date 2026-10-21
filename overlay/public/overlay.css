@@ -167,7 +167,7 @@ body {
 
 /* ------------------------------------------------------------ tiles */
 
-/* A portrait with the name under it, filled row by row (left to right, then
+/* A portrait alone, no name, filled row by row (left to right, then
    the next row) so the order units were written to roster.json is the order
    they read. fitTiles() in overlay.js shrinks --portrait-size / --row-scale
    on the container until the whole list fits. */
@@ -187,18 +187,6 @@ body {
   gap: 1px;
   min-width: 0;
   max-width: 100%;
-}
-
-/* Both images are light where the tiles sit, so the names go dark here. */
-.tile-name {
-  max-width: 100%;
-  font-size: calc(13px * var(--row-scale, 1));
-  font-weight: 700;
-  line-height: 1.1;
-  color: #16171a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .tiles .portrait.placeholder {

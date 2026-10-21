@@ -7,13 +7,18 @@ area (filled in by the agent). Broad, cross-chapter lessons go under **Broad str
 ## General Strategy
 
 - Always select "yes" to accept side missions when offered the choice to do so.
-- Once Merlinus has joined your party, you will be prompted at the beginning of every single chapter whether or not you want to deploy him. Always select yes.
 
 ## Recruiting Units
 
 In each chapter, there are often units that appear as green units (uncontrollable allies) or red units (enemies). These units can often be recruited by executing the Talk action with a specific player-controlled unit, but there are some more complex conditions that have to be fulfilled in order to recruit some characters. For each chapter, you have been provided a list of the recruitable units that appear and the conditions that need to be fulfilled in order to recruit the character. You should try to recruit units if possible, but it is not a strict requirement.
 
 The chapter sections below cover Lyn mode and Hector mode. Eliwood mode is not covered. Recruits are the same on normal and hard difficulty throughout the entire game, so use the list for your mode regardless of difficulty.
+
+## Promoting Units
+
+Fire Emblem has a mechanic known as promotion, where a unit advances to a stronger class. A unit must be at least level 10 to be promoted, although it can go as high as level 20 before being promoted. It is up to you to decide when it is appropriate to promote a unit.
+
+In virtually all cases, a unit is promoted by using a specific consumable item that matches its class. For example, a knight can use a knight crest to be promoted to a general.
 
 ## Broad strategy notes
 
