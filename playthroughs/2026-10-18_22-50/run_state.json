@@ -1,0 +1,91 @@
+{
+  "mode": "hector",
+  "current_chapter": "GAME COMPLETE (Final Chapter won; credits reached)",
+  "attempts": 0,
+  "completed": [
+    {
+      "chapter": "Chapter 21 — New Resolve",
+      "attempts": 6,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 22 — Kinship's Bond",
+      "attempts": 6,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 23 — Living Legend",
+      "attempts": 6,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 24 — Four-Fanged Offense (24a Linus version / 24b Lloyd version)",
+      "attempts": 6,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 25 — Crazed Beast",
+      "attempts": 6,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 26 — Unfulfilled Heart",
+      "attempts": 6,
+      "session": "s06"
+    },
+    {
+      "chapter": "Chapter 27 — Pale Flower of Darkness",
+      "attempts": 6,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 28 — Battle before Dawn",
+      "attempts": 6,
+      "session": "s08"
+    },
+    {
+      "chapter": "Chapter 29 — Cog of Destiny",
+      "attempts": 3,
+      "session": "s09"
+    },
+    {
+      "chapter": "Chapter 30 — The Berserker",
+      "attempts": 3,
+      "session": "s11"
+    },
+    {
+      "chapter": "Chapter 31 — Sands of Time",
+      "attempts": 3,
+      "session": "s12"
+    },
+    {
+      "chapter": "Chapter 31x — Battle Preparations (gaiden)",
+      "attempts": 3,
+      "session": "s13"
+    },
+    {
+      "chapter": "Chapter 32 — Victory or Death",
+      "attempts": 3,
+      "session": "s16"
+    },
+    {
+      "chapter": "Final Chapter — Light (two parts)",
+      "attempts": 2,
+      "session": "s17"
+    }
+  ],
+  "dead": [
+    "Erk",
+    "Heath",
+    "Wil",
+    "Nils",
+    "Hawkeye"
+  ],
+  "unrecruited": [
+    "Wallace",
+    "Farina",
+    "Jaffar",
+    "Karla",
+    "Renault"
+  ]
+}

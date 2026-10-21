@@ -1,0 +1,71 @@
+{
+  "mode": "lyn",
+  "current_chapter": "Lyn's Tale complete — game at 'continue playing?' prompt before Eliwood Ch.11 Taking Leave",
+  "attempts": 0,
+  "completed": [
+    {
+      "chapter": "Prologue — A Girl from the Plains",
+      "attempts": 3,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 1 — Footsteps of Fate",
+      "attempts": 1,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 2 — Sword of Spirits",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 3 — Band of Mercenaries",
+      "attempts": 1,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 4 — In Occupation's Shadow",
+      "attempts": 1,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 5 — Beyond the Borders",
+      "attempts": 1,
+      "session": "s06"
+    },
+    {
+      "chapter": "Chapter 6 — Blood of Pride",
+      "attempts": 1,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 7 — Siblings Abroad",
+      "attempts": 1,
+      "session": "s08"
+    },
+    {
+      "chapter": "Chapter 7x — The Black Shadow (gaiden)",
+      "attempts": 1,
+      "session": "s09"
+    },
+    {
+      "chapter": "Chapter 8 — Vortex of Strategy",
+      "attempts": 1,
+      "session": "s10"
+    },
+    {
+      "chapter": "Chapter 9 — A Grim Reunion",
+      "attempts": 1,
+      "session": "s11"
+    },
+    {
+      "chapter": "Chapter 10 — The Distant Plains",
+      "attempts": 1,
+      "session": "s12"
+    }
+  ],
+  "dead": [
+    "Erk"
+  ],
+  "unrecruited": []
+}

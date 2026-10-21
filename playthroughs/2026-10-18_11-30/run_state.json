@@ -1,0 +1,74 @@
+{
+  "mode": "hector",
+  "current_chapter": "Chapter 21 — New Resolve",
+  "attempts": 3,
+  "completed": [
+    {
+      "chapter": "Chapter 11 — Another Journey",
+      "attempts": 1,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 12 — Birds of a Feather",
+      "attempts": 1,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 13 — In Search of Truth",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 14 — False Friends",
+      "attempts": 2,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 15 — Talons Alight",
+      "attempts": 2,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 16 — Noble Lady of Caelin",
+      "attempts": 2,
+      "session": "s06"
+    },
+    {
+      "chapter": "Chapter 17 — Whereabouts Unknown",
+      "attempts": 1,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 17x — The Port of Badon (gaiden)",
+      "attempts": 1,
+      "session": "s08"
+    },
+    {
+      "chapter": "Chapter 18 — Pirate Ship",
+      "attempts": 1,
+      "session": "s09"
+    },
+    {
+      "chapter": "Chapter 19 — The Dread Isle",
+      "attempts": 1,
+      "session": "s10"
+    },
+    {
+      "chapter": "Chapter 20 — Dragon's Gate",
+      "attempts": 3,
+      "session": "s11"
+    }
+  ],
+  "dead": [
+    "Lowen",
+    "Serra",
+    "Bartre",
+    "Dart"
+  ],
+  "unrecruited": [
+    "Priscilla",
+    "Raven",
+    "Lucius",
+    "Legault"
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "mode": "lyn",
+  "current_chapter": "Chapter 32 — Victory or Death",
+  "attempts": 1,
+  "completed": [
+    {
+      "chapter": "Prologue — A Girl from the Plains",
+      "attempts": 1,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 1 — Footsteps of Fate",
+      "attempts": 1,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 2 — Sword of Spirits",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 3 — Band of Mercenaries",
+      "attempts": 1,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 4 — In Occupation's Shadow",
+      "attempts": 1,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 5 — Beyond the Borders",
+      "attempts": 1,
+      "session": "s06"
+    },
+    {
+      "chapter": "Chapter 6 — Blood of Pride",
+      "attempts": 1,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 7 — Siblings Abroad",
+      "attempts": 1,
+      "session": "s08"
+    },
+    {
+      "chapter": "Chapter 7x — The Black Shadow (gaiden)",
+      "attempts": 1,
+      "session": "s09"
+    },
+    {
+      "chapter": "Chapter 8 — Vortex of Strategy",
+      "attempts": 1,
+      "session": "s10"
+    },
+    {
+      "chapter": "Chapter 9 — A Grim Reunion",
+      "attempts": 1,
+      "session": "s11"
+    },
+    {
+      "chapter": "Chapter 10 — The Distant Plains",
+      "attempts": 1,
+      "session": "s12"
+    },
+    {
+      "chapter": "Chapter 11 — Taking Leave",
+      "attempts": 1,
+      "session": "s13"
+    },
+    {
+      "chapter": "Chapter 12 — Birds of a Feather",
+      "attempts": 1,
+      "session": "s14"
+    },
+    {
+      "chapter": "Chapter 13 — In Search of Truth",
+      "attempts": 1,
+      "session": "s15"
+    },
+    {
+      "chapter": "Chapter 14 — False Friends",
+      "attempts": 1,
+      "session": "s16"
+    },
+    {
+      "chapter": "Chapter 16 — Noble Lady of Caelin",
+      "attempts": 1,
+      "session": "s17"
+    },
+    {
+      "chapter": "Chapter 17 — Whereabouts Unknown",
+      "attempts": 1,
+      "session": "s18"
+    },
+    {
+      "chapter": "Chapter 18 — Pirate Ship",
+      "attempts": 2,
+      "session": "s19"
+    },
+    {
+      "chapter": "Chapter 19 — The Dread Isle",
+      "attempts": 1,
+      "session": "s20"
+    },
+    {
+      "chapter": "Chapter 20 — Dragon's Gate",
+      "attempts": 2,
+      "session": "s21"
+    },
+    {
+      "chapter": "Chapter 21 — New Resolve",
+      "attempts": 2,
+      "session": "s22"
+    },
+    {
+      "chapter": "Chapter 22 — Kinship's Bond",
+      "attempts": 2,
+      "session": "s23"
+    },
+    {
+      "chapter": "Chapter 23 — Living Legend",
+      "attempts": 1,
+      "session": "s24"
+    },
+    {
+      "chapter": "Chapter 24 — Four-Fanged Offense (24a Linus version / 24b Lloyd version)",
+      "attempts": 2,
+      "session": "s25"
+    },
+    {
+      "chapter": "Chapter 26 — Unfulfilled Heart",
+      "attempts": 2,
+      "session": "s26"
+    },
+    {
+      "chapter": "Chapter 27 — Pale Flower of Darkness",
+      "attempts": 1,
+      "session": "s27"
+    },
+    {
+      "chapter": "Chapter 28 — Battle before Dawn",
+      "attempts": 3,
+      "session": "s28"
+    },
+    {
+      "chapter": "Chapter 29 — Cog of Destiny",
+      "attempts": 7,
+      "session": "s34"
+    },
+    {
+      "chapter": "Chapter 30 — The Berserker",
+      "attempts": 1,
+      "session": "s35"
+    },
+    {
+      "chapter": "Chapter 31 — Sands of Time",
+      "attempts": 2,
+      "session": "s36"
+    },
+    {
+      "chapter": "Chapter 31x — Battle Preparations (gaiden)",
+      "attempts": 1,
+      "session": "s37"
+    }
+  ],
+  "dead": [
+    "Isadora",
+    "Heath",
+    "Ninian",
+    "Dorcas",
+    "Kent",
+    "Sain",
+    "Lowen",
+    "Legault",
+    "Serra",
+    "Erk",
+    "Rebecca",
+    "Oswin",
+    "Bartre"
+  ],
+  "unrecruited": [
+    "Guy",
+    "Priscilla",
+    "Raven",
+    "Lucius",
+    "Fiora",
+    "Rath",
+    "Wallace",
+    "Harken",
+    "Jaffar",
+    "Vaida",
+    "Karla"
+  ]
+}
