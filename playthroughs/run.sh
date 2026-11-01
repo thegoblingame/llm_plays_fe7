@@ -2,7 +2,7 @@
 # One fresh Claude session per chapter, until the game is beaten, a session reports
 # LOST or STUCK, a STOP file appears, or MAX_SESSIONS is reached.
 #
-#   usage:  playthroughs/run.sh [--runbook PATH] <chapter> [model] [effort]
+#   usage:  playthroughs/run.sh [--runbook PATH] [--max-attempts N] <chapter> [model] [effort]
 #           e.g.  playthroughs/run.sh 13 fable medium
 #                 playthroughs/run.sh --runbook vision_runbook.md 13 fable medium
 #           <chapter> is the chapter loaded in the emulator right now: a number (13), a gaiden
@@ -11,6 +11,10 @@
 #           playthrough that already has a run_state.json, pass "-" and the file is left alone.
 #           --runbook is the runbook every session is given (default PLAYTHROUGH_RUNBOOK.md). A
 #           relative PATH is tried from the current directory first, then from llm_plays_fe7/.
+#           --max-attempts is how many attempts at a chapter one session may start before it
+#           hands over to a fresh session (PLAYTHROUGH_RESULT=RETRY), to keep sessions short of
+#           compaction. Counted from run_state.json's `attempts` when the session starts.
+#           Default: no limit.
 #   stop:   touch playthroughs/STOP    (takes effect between sessions; delete it to resume)
 #   env:    MAX_SESSIONS (default 45)  RETRY_WAIT seconds (default 900)  MAX_FAILS (default 6)
 #           RETRY_WAIT_MAX seconds (default 14400). The wait after a session with no result line
@@ -38,8 +42,10 @@
 # its playthrough folder, its own MCP config (so the fe7 tool log lands in that folder's runs/
 # instead of the single file hardcoded in ~/.claude.json), and a fresh MCP server process.
 #
-# The session's last line must be PLAYTHROUGH_RESULT=WON|LOST|STUCK (see the runbook).
-# WON  -> next session.   LOST / STUCK -> halt for the human.
+# The session's last line must be PLAYTHROUGH_RESULT=WON|RETRY|LOST|STUCK (see the runbook).
+# WON  -> next session.   LOST / STUCK -> halt for the human (older runbooks only).
+# RETRY -> the attempt limit was reached; start a fresh session on the same chapter at once.
+#          If `attempts` did not grow during the session, it is treated as a failure instead.
 # none -> the session died; wait (RETRY_WAIT, doubling per failure in a row) and start a fresh
 #         session on the same chapter.
 set -uo pipefail
@@ -51,9 +57,13 @@ MCP_SERVER="$(cd "$ROOT/../mcp-mgba" && pwd)/dist/index.js"
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 # --runbook PATH (or --runbook=PATH) may appear anywhere; everything else stays positional.
 RUNBOOK="$ROOT/PLAYTHROUGH_RUNBOOK.md"
+MAX_ATTEMPTS=""
 args=()
 while (( $# )); do
   case "$1" in
+    --max-attempts)   [[ $# -ge 2 ]] || { echo "ERROR: --max-attempts needs a number" >&2; exit 1; }
+                      MAX_ATTEMPTS="$2"; shift 2 ;;
+    --max-attempts=*) MAX_ATTEMPTS="${1#--max-attempts=}"; shift ;;
     --runbook)   [[ $# -ge 2 ]] || { echo "ERROR: --runbook needs a path" >&2; exit 1; }
                  RUNBOOK="$2"; shift 2 ;;
     --runbook=*) RUNBOOK="${1#--runbook=}"; shift ;;
@@ -65,6 +75,7 @@ set -- "${args[@]+"${args[@]}"}"
 if [[ ! -f "$RUNBOOK" && "$RUNBOOK" != /* && -f "$ROOT/$RUNBOOK" ]]; then RUNBOOK="$ROOT/$RUNBOOK"; fi
 [[ -f "$RUNBOOK" ]] || { echo "ERROR: runbook $RUNBOOK not found" >&2; exit 1; }
 RUNBOOK="$(cd "$(dirname "$RUNBOOK")" && pwd)/$(basename "$RUNBOOK")"
+[[ -z "$MAX_ATTEMPTS" || "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: --max-attempts must be a positive whole number, not '$MAX_ATTEMPTS'" >&2; exit 1; }
 CHAPTER_ARG="${1:-}"
 MODEL="${2:-fable}"
 EFFORT="${3:-medium}"
@@ -105,6 +116,12 @@ print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("ca
       u.get("output_tokens",0), u.get("output_tokens_details",{}).get("thinking_tokens",0),
       d.get("total_cost_usd",0), d.get("num_turns",0), int(d.get("duration_ms",0)//1000))'
   fi
+}
+
+# `attempts` from run_state.json, or nothing if the file is missing or does not parse.
+read_attempts() {
+  python -c 'import json,sys; a=json.load(open(sys.argv[1],encoding="utf-8")).get("attempts"); print(a if isinstance(a,int) else "")' \
+    "$1" 2>/dev/null
 }
 
 [[ -f "$MCP_SERVER" ]] || { echo "ERROR: $MCP_SERVER not found — run npm run build in mcp-mgba" >&2; exit 1; }
@@ -155,8 +172,21 @@ with open(path, "w", encoding="utf-8") as f:
 EOF
   echo "--- run_state.json: $mode mode, starting at '$heading'"
 fi
+# Record this launch's model and effort as the first two keys, replacing any earlier values,
+# so a continued playthrough shows what it is running on now. Everything else is kept as is.
+python - "$STATE_JSON" "$MODEL" "$EFFORT" <<'EOF' || echo "warning: could not write model/effort into $STATE_JSON; it was left as it was."
+import json, sys
+path, model, effort = sys.argv[1:4]
+with open(path, encoding="utf-8") as f:
+    old = json.load(f)
+state = {"model": model, "effort": effort}
+state.update((k, v) for k, v in old.items() if k not in state)
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(state, f, ensure_ascii=False, indent=2); f.write("\n")
+EOF
 echo "--- playthrough folder: $RUN"
 echo "--- runbook: $RUNBOOK"
+echo "--- attempts per session: ${MAX_ATTEMPTS:-no limit}"
 
 # Continue numbering from the last session on disk, so a restarted loop does not reuse tags.
 n=$(ls "$RUN/sessions" 2>/dev/null | grep -oE '^s[0-9]+' | sed 's/^s//' | sort -n | tail -1)
@@ -181,9 +211,21 @@ while :; do
   printf '{"mcpServers":{"mgba":{"type":"stdio","command":"node","args":["%s"],"env":{"FE7_RUN_LOG":"%s"}}}}\n' \
     "$(winpath "$MCP_SERVER")" "$(winpath "$runlog")" > "$cfg"
 
-  echo "--- $(date '+%F %T') | $tag starting (model=$MODEL effort=$EFFORT)"
+  # The attempt limit for this session: MAX_ATTEMPTS more than the attempts already made.
+  attempts_before=$(read_attempts "$STATE_JSON")
+  limit_line=""
+  if [[ -n "$MAX_ATTEMPTS" ]]; then
+    if [[ -n "$attempts_before" ]]; then
+      limit=$((attempts_before + MAX_ATTEMPTS))
+      limit_line=$(printf 'Attempt limit for this session: %s. run_state.json shows %s attempts so far; once a lost attempt leaves `attempts` at %s, end the session with PLAYTHROUGH_RESULT=RETRY as the runbook describes under "When the attempt limit is reached".' "$limit" "$attempts_before" "$limit")
+    else
+      echo "warning: could not read attempts from $STATE_JSON; $tag runs with no attempt limit."
+    fi
+  fi
+
+  echo "--- $(date '+%F %T') | $tag starting (model=$MODEL effort=$EFFORT attempts=${attempts_before:-?}${limit_line:+ limit=$limit})"
   {
-    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, run_state.json, states/, sessions/, screenshots/ and runs/ inside). The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")"
+    printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, run_state.json, states/, sessions/, screenshots/ and runs/ inside).%s The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")" "${limit_line:+ $limit_line}"
     cat "$RUNBOOK"
   } | (
     cd "$ROOT" && claude -p \
@@ -196,7 +238,7 @@ while :; do
 
   # Only the final "result" record counts, so the runbook text (which names all three
   # values) or a mid-session mention cannot masquerade as the verdict.
-  result=$(grep '"type":"result"' "$transcript" | tail -1 | grep -oE 'PLAYTHROUGH_RESULT=(WON|LOST|STUCK)' | tail -1 | cut -d= -f2)
+  result=$(grep '"type":"result"' "$transcript" | tail -1 | grep -oE 'PLAYTHROUGH_RESULT=(WON|RETRY|LOST|STUCK)' | tail -1 | cut -d= -f2)
   echo "--- $(date '+%F %T') | $tag finished  exit=$rc  result=${result:-none}"
 
   read -r u_in u_cw u_cr u_out u_think u_cost u_turns u_secs <<< "$(session_usage "$transcript")"
@@ -209,9 +251,23 @@ while :; do
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date '+%F %T')" "$tag" "${result:-none}" \
     "$u_in" "$u_cw" "$u_cr" "$u_out" "$u_think" "$u_cost" "$u_turns" "$u_secs" >> "$USAGE_TSV"
 
+  # A RETRY only counts if the session really played: `attempts` must have grown. Otherwise
+  # it is handled like a missing result line, so a session that says RETRY without playing
+  # cannot spin the loop through MAX_SESSIONS.
+  if [[ "$result" == "RETRY" ]]; then
+    attempts_after=$(read_attempts "$STATE_JSON")
+    if [[ -z "$attempts_before" || -z "$attempts_after" ]] || (( attempts_after <= attempts_before )); then
+      echo "RETRY, but attempts went ${attempts_before:-?} -> ${attempts_after:-?}; treating it as a failure."
+      result=""
+    fi
+  fi
+
   case "${result:-none}" in
     WON)
       fails=0 ;;
+    RETRY)
+      fails=0
+      echo "Attempt limit reached ($attempts_after attempts). Starting a fresh session on the same chapter." ;;
     LOST|STUCK)
       echo "Session $tag reported $result. Halting for the human. See $RUN/run_state.json, $RUN/CURRENT_RUN_STRATEGY.md and $transcript."
       break ;;

@@ -107,6 +107,8 @@ C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthroughs/<YYYY-MM-D
 
 ```json
 {
+  "model": "fable",
+  "effort": "medium",
   "mode": "hector",
   "current_chapter": "Chapter 13 — In Search of Truth",
   "attempts": 1,
@@ -124,6 +126,8 @@ C:/Users/khaaa/Desktop/fe7_llm_experiments/llm_plays_fe7/playthroughs/<YYYY-MM-D
 
 | Key               | Meaning                                                                                                                                                                  |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `model`           | The model this launch of the loop runs on. Set by the loop each launch; never edit it.                                                                                   |
+| `effort`          | The reasoning effort this launch runs at. Set by the loop each launch; never edit it.                                                                                    |
 | `mode`            | `lyn`, `eliwood`, or `hector`. Set by the loop; never changes.                                                                                                           |
 | `current_chapter` | The chapter being played, **verbatim** as its `### ` heading reads in `CURRENT_RUN_STRATEGY.md`. That heading is how you find your section: search for the exact string. |
 | `attempts`        | Attempts made at `current_chapter`, **including the one in progress**. You add 1 at the start of every attempt. 0 means nobody has started it yet.                       |
@@ -336,10 +340,12 @@ exactly:
 PLAYTHROUGH_RESULT=WON
 ```
 
-`WON` starts the next session on the next chapter. There is no result line for a lost
-chapter or for being stuck, because neither one ends the session: keep playing until the
-chapter is won. A missing result line is treated as a crash, and the loop starts a new
-session on the same chapter.
+`WON` starts the next session on the next chapter. The only other result is
+`PLAYTHROUGH_RESULT=RETRY`, and only when the attempt limit is reached (see "When the attempt
+limit is reached" below): it starts a fresh session on the same chapter. Otherwise there is
+no result line for a lost chapter or for being stuck, because neither one ends the session:
+keep playing until the chapter is won. A missing result line is treated as a crash, and the
+loop waits before starting a new session on the same chapter.
 
 ### When the chapter is won
 
@@ -401,6 +407,26 @@ what the lost attempt taught you, exactly as in "Before you start".
 **Restart Chapter**, not Resume Chapter. Take a screenshot after each press on these
 screens. This is the one situation where choosing Suspend on the field menu is allowed: after a chapter loss, you may Suspend and Restart
 Chapter to play it again. Never rewind the game any other way.
+
+### When the attempt limit is reached
+
+The header above this runbook may set an **attempt limit**: the value of `attempts` in
+`run_state.json` at which this session stops playing the chapter. Long sessions get
+compacted, and a fresh session with good notes plays better than a crowded one. If the
+header sets no limit, there is none.
+
+When an attempt is lost and `attempts` has already reached the limit, do not play the
+chapter again in this session. Instead:
+
+1. Write what the lost attempts taught you into your chapter's Agent notes, as in "When the
+   chapter is lost". The next session starts with nothing else.
+2. Press through the game over and choose Restart Chapter, as above, so the game sits at the
+   chapter's start. **Do not add 1 to `attempts`**; the next session does that when it starts.
+3. Take a final screenshot.
+4. End with `PLAYTHROUGH_RESULT=RETRY` as the last line of your final message.
+
+Only a lost attempt ends a session this way. Never use `RETRY` while an attempt is still in
+progress, and never on a won chapter — that is `WON`.
 
 ### When you cannot make progress
 
