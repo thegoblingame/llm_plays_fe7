@@ -2,13 +2,20 @@
 # One fresh Claude session per chapter, until the game is beaten, a session reports
 # LOST or STUCK, a STOP file appears, or MAX_SESSIONS is reached.
 #
-#   usage:  playthroughs/run.sh <chapter> [model] [effort]    e.g.  playthroughs/run.sh 13 fable medium
+#   usage:  playthroughs/run.sh [--runbook PATH] <chapter> [model] [effort]
+#           e.g.  playthroughs/run.sh 13 fable medium
+#                 playthroughs/run.sh --runbook vision_runbook.md 13 fable medium
 #           <chapter> is the chapter loaded in the emulator right now: a number (13), a gaiden
 #           (7x, 19xx), "prologue" or "final". It is matched against the "### ..." headings of
 #           PLAYTHROUGH_STRATEGY_TEMPLATE.md and written to run_state.json. When continuing a
 #           playthrough that already has a run_state.json, pass "-" and the file is left alone.
+#           --runbook is the runbook every session is given (default PLAYTHROUGH_RUNBOOK.md). A
+#           relative PATH is tried from the current directory first, then from llm_plays_fe7/.
 #   stop:   touch playthroughs/STOP    (takes effect between sessions; delete it to resume)
 #   env:    MAX_SESSIONS (default 45)  RETRY_WAIT seconds (default 900)  MAX_FAILS (default 6)
+#           RETRY_WAIT_MAX seconds (default 14400). The wait after a session with no result line
+#           doubles with each failure in a row (15m, 30m, 1h, 2h, 4h with the defaults), capped
+#           at RETRY_WAIT_MAX, so a run that hits the usage limit outlasts the 5-hour window.
 #           PLAYTHROUGH_DIR to continue an existing playthrough folder instead of starting a
 #           new one (e.g. PLAYTHROUGH_DIR=playthroughs/2026-09-26_14-30).
 #           QUOTA_WAIT=1 to check plan usage before each session and sleep until the 5-hour /
@@ -27,13 +34,14 @@
 #   runs/          the fe7 tool log per session, playthrough-<date>-<tag>.jsonl
 #   usage.tsv      token usage and cost per session
 #
-# Each session gets PLAYTHROUGH_RUNBOOK.md on stdin with a one-line header naming its tag and
+# Each session gets the runbook (PLAYTHROUGH_RUNBOOK.md unless --runbook says otherwise) on stdin with a one-line header naming its tag and
 # its playthrough folder, its own MCP config (so the fe7 tool log lands in that folder's runs/
 # instead of the single file hardcoded in ~/.claude.json), and a fresh MCP server process.
 #
 # The session's last line must be PLAYTHROUGH_RESULT=WON|LOST|STUCK (see the runbook).
 # WON  -> next session.   LOST / STUCK -> halt for the human.
-# none -> the session died; wait RETRY_WAIT and start a fresh session on the same chapter.
+# none -> the session died; wait (RETRY_WAIT, doubling per failure in a row) and start a fresh
+#         session on the same chapter.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"          # llm_plays_fe7
@@ -41,11 +49,28 @@ PT="$ROOT/playthroughs"
 MCP_SERVER="$(cd "$ROOT/../mcp-mgba" && pwd)/dist/index.js"
 # Paths handed to node must be Windows-style: Git Bash's /c/Users/... is read by node as C:\c\Users\...
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+# --runbook PATH (or --runbook=PATH) may appear anywhere; everything else stays positional.
+RUNBOOK="$ROOT/PLAYTHROUGH_RUNBOOK.md"
+args=()
+while (( $# )); do
+  case "$1" in
+    --runbook)   [[ $# -ge 2 ]] || { echo "ERROR: --runbook needs a path" >&2; exit 1; }
+                 RUNBOOK="$2"; shift 2 ;;
+    --runbook=*) RUNBOOK="${1#--runbook=}"; shift ;;
+    *)           args+=("$1"); shift ;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
+# Resolve the runbook to an absolute path now, before anything changes directory.
+if [[ ! -f "$RUNBOOK" && "$RUNBOOK" != /* && -f "$ROOT/$RUNBOOK" ]]; then RUNBOOK="$ROOT/$RUNBOOK"; fi
+[[ -f "$RUNBOOK" ]] || { echo "ERROR: runbook $RUNBOOK not found" >&2; exit 1; }
+RUNBOOK="$(cd "$(dirname "$RUNBOOK")" && pwd)/$(basename "$RUNBOOK")"
 CHAPTER_ARG="${1:-}"
 MODEL="${2:-fable}"
 EFFORT="${3:-medium}"
 MAX_SESSIONS="${MAX_SESSIONS:-45}"
 RETRY_WAIT="${RETRY_WAIT:-900}"
+RETRY_WAIT_MAX="${RETRY_WAIT_MAX:-14400}"
 MAX_FAILS="${MAX_FAILS:-6}"
 QUOTA_WAIT="${QUOTA_WAIT:-0}"
 
@@ -83,9 +108,8 @@ print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("ca
 }
 
 [[ -f "$MCP_SERVER" ]] || { echo "ERROR: $MCP_SERVER not found — run npm run build in mcp-mgba" >&2; exit 1; }
-[[ -f "$ROOT/PLAYTHROUGH_RUNBOOK.md" ]] || { echo "ERROR: PLAYTHROUGH_RUNBOOK.md missing" >&2; exit 1; }
 [[ -f "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" ]] || { echo "ERROR: PLAYTHROUGH_STRATEGY_TEMPLATE.md missing" >&2; exit 1; }
-[[ -n "$CHAPTER_ARG" ]] || { echo "usage: playthroughs/run.sh <chapter> [model] [effort]   (chapter: 13, 7x, prologue, final; or - to keep an existing run_state.json)" >&2; exit 1; }
+[[ -n "$CHAPTER_ARG" ]] || { echo "usage: playthroughs/run.sh [--runbook PATH] <chapter> [model] [effort]   (chapter: 13, 7x, prologue, final; or - to keep an existing run_state.json)" >&2; exit 1; }
 
 # Resolve a chapter argument to the exact "### ..." heading in the template, and the mode
 # ("## Lyn mode" / "## Hector mode") that heading sits under. Prints "mode<TAB>heading".
@@ -132,6 +156,7 @@ EOF
   echo "--- run_state.json: $mode mode, starting at '$heading'"
 fi
 echo "--- playthrough folder: $RUN"
+echo "--- runbook: $RUNBOOK"
 
 # Continue numbering from the last session on disk, so a restarted loop does not reuse tags.
 n=$(ls "$RUN/sessions" 2>/dev/null | grep -oE '^s[0-9]+' | sed 's/^s//' | sort -n | tail -1)
@@ -159,7 +184,7 @@ while :; do
   echo "--- $(date '+%F %T') | $tag starting (model=$MODEL effort=$EFFORT)"
   {
     printf 'You are session %s of the whole-game playthrough. Your session tag is %s. Your playthrough folder is %s (it already exists, with CURRENT_RUN_STRATEGY.md, run_state.json, states/, sessions/, screenshots/ and runs/ inside). The runbook follows; read all of it and follow it.\n\n' "$tag" "$tag" "$(winpath "$RUN")"
-    cat "$ROOT/PLAYTHROUGH_RUNBOOK.md"
+    cat "$RUNBOOK"
   } | (
     cd "$ROOT" && claude -p \
       --model "$MODEL" --effort "$EFFORT" \
@@ -196,7 +221,10 @@ while :; do
         echo "$fails sessions in a row ended without a result line. Halting. Last transcript: $transcript"
         break
       fi
-      echo "No result line (exit $rc). Waiting ${RETRY_WAIT}s, then starting a fresh session on the same chapter ($fails/$MAX_FAILS)."
-      sleep "$RETRY_WAIT" ;;
+      # Double the wait for each failure in a row: 1x, 2x, 4x, ... RETRY_WAIT, capped.
+      wait_s=$(( RETRY_WAIT << (fails - 1) ))
+      (( wait_s <= RETRY_WAIT_MAX )) || wait_s=$RETRY_WAIT_MAX
+      echo "No result line (exit $rc). Waiting ${wait_s}s, then starting a fresh session on the same chapter ($fails/$MAX_FAILS)."
+      sleep "$wait_s" ;;
   esac
 done

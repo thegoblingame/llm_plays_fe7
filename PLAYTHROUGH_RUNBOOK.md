@@ -247,31 +247,6 @@ When the entry is not on the menu, the result prints the menu the game did offer
 command requires. When you name a target the game does not offer, it backs out with the unit
 unspent and lists who it does offer.
 
-#### Free actions leave the unit mid-turn
-
-`take`, `give` and `trade` do **not** end the unit's turn. The game reopens that unit's menu
-and waits. Finish with **another `fe7_act` for the same unit at its current tile** — `wait`,
-`drop`, `attack`, `item`. It can no longer move. If you act with a different unit first, or
-end the turn, that unit's turn simply ends where it stands.
-
-This is what makes the classic plays work: trade a weapon across and then attack with it;
-take a carried unit and drop it on the far side in the same turn.
-
-#### Mounted units keep their leftover Move
-
-After `talk`, `rescue`, `drop`, `steal`, `support` or `visit`, a mounted unit (cavalier,
-paladin, pegasus, wyvern, nomad, troubadour) is handed its leftover Move. Pass `canto_x` and
-`canto_y` to ride on to that tile before it waits — rescue someone and carry them out of
-range in one call. Leave them out and it waits where it stands. A destination that is out of
-reach or occupied is refused in the result and the unit stays put.
-
-#### Carried units in `fe7_state`
-
-A rescued unit shares its carrier's tile. `fe7_state` tags the pair `CARRYING player #N` and
-`CARRIED by player #N (cannot act until dropped)`. A carried unit cannot be selected, is not
-attacked, and comes back spent on the turn it is dropped. Carrying halves the carrier's Skl
-and Spd, so do not fight with a full saddle.
-
 #### Seeing what a unit is actually offered
 
 `fe7_act(slot, x, y, action: 'seize')` doubles as a **menu probe**. Where Seize is not on the
@@ -333,16 +308,11 @@ spend a turn walking the wrong speaker over.
 
 - **A tile can be reachable and still refused** if any unit stands on it — including green
   NPCs, who are easy to forget. `fe7_act` checks all three arrays and will tell you.
-- **A unit carrying a staff may be unable to use it.** Rank 0 in a weapon type means the
-  class cannot use it at all.
 - **A level-up freezes a unit's spent flag** until it finishes, so an action can look like it
   never landed when it is only waiting for the level-up to play out. **No button speeds a
   level-up up** — it runs at its own pace. The tools wait it out; do not panic and re-issue
   the action.
 - **A diagonal neighbour is range 2, not range 1.** Count Manhattan distance.
-- **Enemies break breakable walls.** A second "Wall" terrain ID that reads the same on the
-  cursor is breakable; soldiers spent lance uses on it for two turns and it became Floor.
-  A weapon use with no visible target in the enemy-phase summary usually means this.
 - **A drop into a full inventory halts the game on an item list, and A on it SENDS the
   highlighted item** (the unit's equipped weapon) to Merlinus with no confirmation. The tools
   stop and report instead of pressing; answer with `fe7_inventory_full`. Only send a 5-item
@@ -357,8 +327,6 @@ spend a turn walking the wrong speaker over.
   at this range — nearly always a defender that cannot counter — so its numbers were withheld
   instead of being printed from a struct the game never populated. It is good news: nothing
   is coming back at you.
-- **Terrain can change mid-chapter** (a door opening, a wall breaking). Re-read `fe7_terrain`
-  if the map stops matching what you expect, rather than trusting a stale copy.
 - **The field menu holds Suspend directly above End.** Never open the field menu with raw
   presses; `fe7_end_turn` is the only sanctioned way to end a turn. Suspend save-quits the
   chapter to the title screen, and you then have to find your way back into the chapter.
@@ -436,9 +404,7 @@ follow "When you get stuck" and keep working until the next chapter has loaded.
 bad turn, not to retry a coin-flip attack, not because the board looks wrong. The states
 you save are a **fail-safe for the human**, who will decide whether to use them. The same
 goes for `mgba_reset` and anything else that rewinds a chapter that is still in play. The
-one exception is the game's own Restart Chapter, **after a game over or after two or more
-units have died on an attempt below the fourth**, which is how you play a lost chapter again. A campaign that quietly reloads to undo a bad turn is not a campaign,
-and it would make the strategy file a lie.
+one exception is the game's own Restart Chapter, **after a game over**, which is how you play a lost chapter again. A campaign that quietly reloads to undo a bad turn is not a campaign, and it would make the strategy file a lie.
 
 ---
 
