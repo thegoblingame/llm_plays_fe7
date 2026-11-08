@@ -146,10 +146,34 @@ live under `archive/`; never read from or write to them.
    are listed, no chapter is loaded; follow "When you get stuck" to get into the chapter.
 4. Check the phase is `player`. If not, `fe7_wait`.
 5. If anything looks strange, `fe7_unstick` before pressing anything.
-6. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up.** No tool
-   drives it. Press Start once with `mgba_press_buttons` (hold 6 frames), then `fe7_wait`; the
-   chapter begins on turn 1. Unit slots can be re-sorted when prep closes, so read `fe7_state`
-   again before trusting any slot number from before.
+6. **If the phase is `green/prep` and the turn is 0, the Preparations screen is up — you may modify
+   your line-up with `fe7_prep_select_units`.**
+   - `fe7_prep_select_units status` lists every unit in three groups — DEPLOYED, BENCHED (deployable) and
+     NOT DEPLOYABLE (with the reason) — with stats and items, how many start tiles the
+     chapter has, and which units are REQUIRED. While prep is up, trust it over `fe7_state`,
+     whose deployed list does not reflect changes made here. `fe7_state`'s ENEMIES list is
+     already live, so you can size up the map before choosing.
+   - Decide who to bring from your chapter's section of `CURRENT_RUN_STRATEGY.md` (recruiters
+     the chapter needs, units that must not die, who needs experience) and from the enemies
+     you are facing.
+   - `fe7_prep_select_units set` with `deploy` and/or `bench` — names as status prints them, or slots.
+     Do a swap in **one** call (one name in each list): the deployed count can never exceed
+     the start tiles, so a deploy on its own is refused when every tile is taken. Any broken
+     rule refuses the whole call and nothing is written; the message names the cause.
+   - Required units cannot be benched. That list lives in
+     `llm_plays_fe7/required_units.json`, generated from the human's `deployment_source.json`;
+     the current mode's lord is always protected, and a chapter missing from it protects
+     every lord. If `status` prints a limit-check WARNING, the chapter it identified may be
+     wrong — compare the chapter name it prints with the screen. If the game's own lock disagrees with it, note it with `fe7_note`.
+   - `fe7_prep_select_units start` begins the chapter. The game asks "Deploy Merlinus?" whenever he is in
+     the party; pass `merlinus: true` to bring him (he is the convoy — adjacent units can
+     use Supply — but he cannot fight, and he does not take anyone's start tile). It returns
+     who is actually on the map, with their **new** slots: the array is re-sorted at start, so
+     every slot number from prep is stale.
+   - `set` and `start` need `reason`, like `fe7_act`: one sentence on why this line-up.
+   - The Preparations screen's other menus (Items, Trade, Check Map, Save) still have no
+     tool. Leave them alone unless your strategy needs them; `fe7_prep_select_units` refuses to write
+     while one is open, and says to press B.
 7. **Take an opening screenshot** (see "Screenshots" below) so the run's record starts with
    what the screen actually showed — the objective text, the map, and any dialogue.
 8. Based on the information you've received about the current chapter and what you see in the screenshot, fill in the empty
@@ -172,6 +196,7 @@ live under `archive/`; never read from or write to them.
 | `fe7_unstick`        | Why the game seems frozen and what to press. Returns a screenshot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `fe7_end_turn`       | End the player phase. Returns quickly.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `fe7_wait`           | Wait out the enemy phase in resumable chunks. Read WHICH answer you got — "units did move" means call again, "NOTHING CHANGED" means stop and call `fe7_unstick`. If the phase came back between calls it says so and still prints what happened.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `fe7_prep_select_units`           | The Preparations screen: `status` shows who is deployed, benched and required; `set` deploys and benches (swap in one call); `start` begins the chapter and answers "Deploy Merlinus?". See step 6 of "Before you start".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `fe7_inventory_full` | Answers the "inventory is full, send an item to Merlinus" list that HALTS the game when a unit holding 5 items picks up a drop. Enemies that drop are tagged `DROPS` in `fe7_state`. `fe7_act`, `fe7_wait`, `fe7_end_turn` and `fe7_unstick` stop and print the six entries when it is up; decide which item is least needed and pass its index. The last entry is the new item, and sending it leaves the kit as it was.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `mgba_screenshot`    | A picture of the screen, saved to a path you choose. **Use it liberally** — see "Screenshots" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `mgba_save_state`    | **Once per session, after the chapter is won.** See "Save states" below. Always with an explicit `path`, never a slot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -289,7 +314,11 @@ spend a turn walking the wrong speaker over.
    next block.
 5. **`fe7_end_turn`**, then **`fe7_wait`** until the player phase returns. `fe7_end_turn`
    also needs `reason`: one sentence on why the turn is ready to end — who acted, who was
-   deliberately left idle, and what you expect the enemy to do. A full enemy phase
+   deliberately left idle, and what you expect the enemy to do. It also takes
+   `commentary`: your thoughts on the chapter, shown to viewers on the stream. How often it
+   is required, how long it may be and what makes a good one are all set by the tool — its
+   `commentary` parameter description is the source of truth, and the tool refuses to end
+   the turn when a required one is missing. A full enemy phase
    takes about four minutes. That is normal and is the floor — battle animations are already
    off. Do not try to speed it up.
 
@@ -377,8 +406,6 @@ Getting stuck does not end the session. Work through these in order:
 
 ### Common ways the game gets stuck
 
-- **The game is on the Preparations screen.** Press Enter to get through it. Enter is the
-  GBA's Start button, so press Start with `mgba_press_buttons`, then `fe7_wait`.
 - **The mGBA MCP server got disconnected.** Reconnect to it, confirm with `mgba_ping`, and
   carry on from where the game is.
 - **An unexpected menu or dialog popped up.** Press Enter to skip it, the same way.

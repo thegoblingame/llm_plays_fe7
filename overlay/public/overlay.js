@@ -153,8 +153,20 @@ function renderFeed(feed) {
     const div = document.createElement("div");
     div.className = "line age-" + Math.min(age, 9);
     if (age === 0) div.classList.add("newest");
-    if (f.tool === "fe7_end_turn") div.classList.add("end-turn");
-    div.textContent = f.text;
+    if (f.kind === "commentary") {
+      // The agent's own thoughts, not a reason: a bubble with a turn tag.
+      div.classList.add("commentary");
+      const tag = document.createElement("div");
+      tag.className = "commentary-tag";
+      tag.textContent = f.turn != null ? "Turn " + f.turn + " · thoughts" : "thoughts";
+      const body = document.createElement("div");
+      body.className = "commentary-text";
+      body.textContent = f.text;
+      div.append(tag, body);
+    } else {
+      if (f.tool === "fe7_end_turn") div.classList.add("end-turn");
+      div.textContent = f.text;
+    }
     el.feed.append(div);
   });
 }

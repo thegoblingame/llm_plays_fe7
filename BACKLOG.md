@@ -19,10 +19,16 @@ Each item is tagged with its lane:
 Source: `runs/2026-09-10.jsonl`. The chapter was completed, so none of these block a win;
 they block *playing well without hand work*.
 
-- **Preparations tool** — nothing drives the prep screen. Leaving prep needs a raw Start
-  press; Pick Units and prep Trade are mapped in `RAM.md` ("The Preparations screen") but
-  have no tool. Florina went into 7x with no weapon because the fix lived in prep Trade.
-  Sketch: `fe7_prep(action:'start' | 'deploy' | 'bench' | 'trade', slot, ...)`.
+- **Prep Trade / Items** — `fe7_prep_select_units` (2026-11-08) now does status, deploy/bench and start,
+  but nothing moves items on the prep screen. Florina went into 7x with no weapon because the
+  fix lived in prep Trade. Its first stage (a 3-column unit picker) is mapped in `RAM.md`;
+  the item stage is not. A natural extension: `fe7_prep_select_units action:'trade'`.
+- **Unverified chapter indices** — `required_units.json` is generated from
+  `deployment_source.json` by `scripts/build_required_units.py`, which maps chapter names to
+  the game's index by counting the chapter sequence. 0x17, 0x25, 0x27 and 0x29 were read from
+  real saves and all four prep screens also matched the source's deployment limits; the rest
+  are counted. Each new prep screen checks itself (`status` prints a limit check) — when it
+  matches, add the index to `VERIFIED` in the script. Lyn mode (mode byte 1) is untested.
 - **Names in `fe7_state`** — classes and items print as hex (`cls32`, `6Dx3`). Class name
   from the ROM class table (id = (ptr − 0x08BE015C) / 0x54), item name from the item table.
   Spotting the unarmed unit took a manual decode.

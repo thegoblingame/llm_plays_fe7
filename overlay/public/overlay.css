@@ -368,6 +368,48 @@ body {
   font-style: italic;
 }
 
+/* The agent's commentary from fe7_end_turn: its thoughts on the chapter, every
+   third turn. It lands right after the end-turn reason and nothing else is
+   written during the enemy phase, so it sits at the bottom of the feed for those
+   few minutes, then scrolls up as the next turn's reasons arrive. A speech
+   bubble in the accent colour, so it never reads as just another reason. */
+.line.commentary {
+  position: relative;
+  padding: 9px 11px 10px;
+  margin-bottom: 8px; /* room for the tail */
+  border: 1px solid rgba(201, 162, 39, 0.55);
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.1);
+}
+
+/* The tail, bottom-left, pointing at the agent (and the milk carton). */
+.line.commentary::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
+  background: #2a2716; /* panel + bubble tint, flattened so the tail is opaque */
+  border-right: 1px solid rgba(201, 162, 39, 0.55);
+  border-bottom: 1px solid rgba(201, 162, 39, 0.55);
+  transform: rotate(45deg);
+}
+
+.commentary-tag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+
+.commentary-text {
+  font-size: 17px;
+  line-height: 1.36;
+}
+
 /* @keyframes arrive {
   from {
     opacity: 0;

@@ -85,13 +85,21 @@ RETRY_WAIT_MAX="${RETRY_WAIT_MAX:-14400}"
 MAX_FAILS="${MAX_FAILS:-6}"
 QUOTA_WAIT="${QUOTA_WAIT:-0}"
 
+# The Python 3 interpreter: `python` on Windows, `python3` on macOS. Windows can also have a
+# `python3` stub that only opens the Store, so run each candidate rather than trust that it exists.
+PYTHON=""
+for candidate in python python3; do
+  if "$candidate" -c 'import sys; sys.exit(sys.version_info[0] != 3)' >/dev/null 2>&1; then PYTHON="$candidate"; break; fi
+done
+[[ -n "$PYTHON" ]] || { echo "ERROR: no working Python 3 found (tried python, python3)" >&2; exit 1; }
+
 # Optional quota gate. With QUOTA_WAIT=1, ask playthroughs/quota.py before each session and
 # sleep as long as it says. If the check itself fails, say so and carry on rather than stall.
 wait_for_quota() {
   [[ "$QUOTA_WAIT" == "1" ]] || return 0
   while :; do
     local verdict
-    verdict=$(python "$PT/quota.py") || { echo "quota check failed; starting the session anyway."; return 0; }
+    verdict=$("$PYTHON" "$PT/quota.py") || { echo "quota check failed; starting the session anyway."; return 0; }
     case "$verdict" in
       ok) return 0 ;;
       wait\ *) local secs=${verdict#wait }; echo "Quota above threshold. Sleeping ${secs}s until the window resets."; sleep "$secs" ;;
@@ -111,7 +119,7 @@ session_usage() {
       .usage.output_tokens_details.thinking_tokens // 0, .total_cost_usd // 0,
       .num_turns // 0, ((.duration_ms // 0) / 1000 | floor) ] | @sh' | tr -d "'"
   else
-    printf '%s' "$rec" | python -c 'import sys,json; d=json.loads(sys.stdin.read()); u=d.get("usage",{})
+    printf '%s' "$rec" | "$PYTHON" -c 'import sys,json; d=json.loads(sys.stdin.read()); u=d.get("usage",{})
 print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("cache_read_input_tokens",0),
       u.get("output_tokens",0), u.get("output_tokens_details",{}).get("thinking_tokens",0),
       d.get("total_cost_usd",0), d.get("num_turns",0), int(d.get("duration_ms",0)//1000))'
@@ -120,7 +128,7 @@ print(u.get("input_tokens",0), u.get("cache_creation_input_tokens",0), u.get("ca
 
 # `attempts` from run_state.json, or nothing if the file is missing or does not parse.
 read_attempts() {
-  python -c 'import json,sys; a=json.load(open(sys.argv[1],encoding="utf-8")).get("attempts"); print(a if isinstance(a,int) else "")' \
+  "$PYTHON" -c 'import json,sys; a=json.load(open(sys.argv[1],encoding="utf-8")).get("attempts"); print(a if isinstance(a,int) else "")' \
     "$1" 2>/dev/null
 }
 
@@ -131,11 +139,12 @@ read_attempts() {
 # Resolve a chapter argument to the exact "### ..." heading in the template, and the mode
 # ("## Lyn mode" / "## Hector mode") that heading sits under. Prints "mode<TAB>heading".
 resolve_chapter() {
-  local want
-  case "${1,,}" in
+  local want chapter
+  chapter=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')   # not ${1,,}: macOS ships bash 3.2
+  case "$chapter" in
     prologue) want='^### prologue ' ;;
     final)    want='^### final chapter ' ;;
-    *)        want="^### chapter ${1,,} " ;;
+    *)        want="^### chapter $chapter " ;;
   esac
   # The template may carry CRLF line endings; strip the CR before matching.
   awk -v pat="$want" '
@@ -163,7 +172,7 @@ else
   [[ "$CHAPTER_ARG" != "-" ]] || { echo "ERROR: no run_state.json in $RUN; name the chapter that is loaded." >&2; exit 1; }
   IFS=$'\t' read -r mode heading <<< "$(resolve_chapter "$CHAPTER_ARG")"
   [[ -n "$heading" ]] || { echo "ERROR: no '### Chapter $CHAPTER_ARG — ...' heading in PLAYTHROUGH_STRATEGY_TEMPLATE.md" >&2; exit 1; }
-  python - "$STATE_JSON" "$mode" "$heading" <<'EOF'
+  "$PYTHON" - "$STATE_JSON" "$mode" "$heading" <<'EOF'
 import json, sys
 path, mode, heading = sys.argv[1:4]
 state = {"mode": mode, "current_chapter": heading, "attempts": 0, "completed": [], "dead": [], "unrecruited": []}
@@ -174,7 +183,7 @@ EOF
 fi
 # Record this launch's model and effort as the first two keys, replacing any earlier values,
 # so a continued playthrough shows what it is running on now. Everything else is kept as is.
-python - "$STATE_JSON" "$MODEL" "$EFFORT" <<'EOF' || echo "warning: could not write model/effort into $STATE_JSON; it was left as it was."
+"$PYTHON" - "$STATE_JSON" "$MODEL" "$EFFORT" <<'EOF' || echo "warning: could not write model/effort into $STATE_JSON; it was left as it was."
 import json, sys
 path, model, effort = sys.argv[1:4]
 with open(path, encoding="utf-8") as f:

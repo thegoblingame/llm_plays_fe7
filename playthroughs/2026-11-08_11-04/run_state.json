@@ -1,0 +1,20 @@
+{
+  "model": "opus",
+  "effort": "low",
+  "mode": "hector",
+  "current_chapter": "Chapter 19 — The Dread Isle",
+  "attempts": 0,
+  "completed": [
+    {
+      "chapter": "Chapter 18 — Pirate Ship",
+      "attempts": 2,
+      "session": "s01"
+    }
+  ],
+  "dead": [
+    "Marcus",
+    "Bartre",
+    "Dorcas"
+  ],
+  "unrecruited": []
+}

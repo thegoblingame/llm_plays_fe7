@@ -1,0 +1,16 @@
+{
+  "model": "opus",
+  "effort": "low",
+  "mode": "hector",
+  "current_chapter": "Chapter 29 — Cog of Destiny",
+  "attempts": 0,
+  "completed": [
+    {
+      "chapter": "Chapter 28 — Battle before Dawn",
+      "attempts": 1,
+      "session": "s01"
+    }
+  ],
+  "dead": ["Oswin"],
+  "unrecruited": ["Jaffar"]
+}

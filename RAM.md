@@ -99,10 +99,13 @@ confined to `0x81`–`0x8F` as the earlier Lyn-mode sample suggested.
 
 | Offset | Address | Size | Field | Confidence |
 |---|---|---|---|---|
+| `0x05` | `0x0202BC05` | u8 | Vision range — `03` on fog maps (Dread Isle, Hector Ch.28), `00` without fog | Inferred |
+| `0x06` | `0x0202BC06` | u8 | **Chapter index** — the game's own, not the on-screen number. See "Chapter index" | Confirmed |
 | `0x07` | `0x0202BC07` | u8 | **Current phase / active faction** — see below | Confirmed |
 | `0x08` | `0x0202BC08` | u8 | **Turn counter** | Confirmed |
 | `0x0A` | `0x0202BC0A` | u8 | Cursor x, **lazily synced** — see Cursor section | Confirmed |
 | `0x0B` | `0x0202BC0B` | u8 | Cursor y, **lazily synced** — see Cursor section | Confirmed |
+| `0x13` | `0x0202BC13` | u8 | **Game mode** — 1 Lyn, 2 Eliwood, 3 Hector. See "Game mode" | Confirmed (2 of 3 values) |
 | `0x18` | `0x0202BC18` | char[] | Tactician name, ASCII, NUL-padded | Confirmed |
 
 **Turn counter** was proven by diff: ending the turn changed only two bytes in the first
@@ -2272,7 +2275,7 @@ Lyn was the only unit in the player array; every other slot was zeroed. Objectiv
   question it was blocking is answered
 
 - ~~Gold~~ — **RESOLVED 2026-10-14: `0x0202BC00`, u32**, by spend-and-diff at an armoury. See "Gold".
-- Chapter / map ID
+- ~~Chapter / map ID~~ — **RESOLVED 2026-11-08: `0x0202BC06`**, see "Chapter index".
 - ~~**Terrain / map tile array**~~ — **RESOLVED 2026-08-29: `0x0202E3E0`**, one of seven
   statically-addressed map layers catalogued at `0x0202E3DC`. Found exactly by the suggested
   method — a shape sweep of IWRAM + EWRAM for evenly-spaced row-pointer tables — which
@@ -2515,7 +2518,7 @@ MI+0x0E  u32[cnt] pointers to the per-entry procs, IN MENU ORDER
 
 **There is NO index mirror**, so `fe7.ts`'s `locateMenu()` — which requires an adjacent
 byte pair showing the identical before/after transition — **cannot find this menu**. That
-is a structural fact, not a tuning problem: `fe7_prep` needs its own locator.
+is a structural fact, not a tuning problem: `fe7_prep_select_units` needs its own locator.
 
 `MI` was `0x020250DA` on Ch.7x and RAM.md's earlier Ch.22 note put the same menu at
 `0x0202543A`, so it is allocated per instance like every other FE7 menu. RAM.md's older
@@ -2673,7 +2676,7 @@ Observed (Ch.7x), benching Dorcas (slot 5) and Erk (slot 6) via the UI:
 | slot 9 | Matthew | Lucius `(255,4)`, deployed | Lucius `(8,15)` |
 | slot 10 | Nils, benched-flag | Dorcas `(12,16)` | Dorcas `(255,16)` |
 
-Any `fe7_prep` tool that hands slot numbers back to the caller must re-read the array after
+Any `fe7_prep_select_units` tool that hands slot numbers back to the caller must re-read the array after
 leaving prep. Slot numbers taken from `fe7_state` **before** prep are not valid after it.
 
 Two more things fall out of the same table:
@@ -2911,6 +2914,141 @@ lord lock: cursor on slot 0 (Hector), A -> no-op
 direct write (DO NOT while Pick Units open): from top menu, set/clear bit 3 of +0x0C
 leave: B -> array re-sorted, +0x0B renumbered, x finalized only at Start
 ```
+
+## Ch.28 Hector mode (index `0x25`) — 2026-11-08, and what `fe7_prep_select_units` is built on
+
+Third chapter for the prep mechanics, 29-unit roster, cap 14. Everything below was run from
+`playthroughs/states_for_testing/28_hector_normal_tool.ss2`, which is at the prep top menu.
+
+### Chapter index — `0x0202BC06` — Confirmed (consistency + structure)
+
+FE8's `PlaySt` with its 8 bytes of timers removed lines up field for field: gold `+0x00`,
+vision range `+0x05`, **chapter index `+0x06`**, phase `+0x07`, turn `+0x08`. Read across
+eight save states from three playthroughs:
+
+| State | mode byte | `0x0202BC06` |
+|---|---|---|
+| The Dread Isle (objective "Defeat Uhai") — Grant's Ch.17 prep, and two playthrough states of the same game | 2 Eliwood | `0x17` ×3 |
+| `28_hector_normal_tool.ss2` (prep, Hector greyed) | 3 Hector | `0x25` |
+| A run.sh-28 state at turn 2, and `28_eliwood_normal_tool.ss2` | 2 Eliwood | `0x25`, `0x25` |
+| Cog of Destiny (a playthrough's `s01_ch29_cog-of-destiny.ss`) | 2 Eliwood | `0x27` |
+| `30_hector_normal_tool.ss2` | 3 Hector | `0x29` |
+| `18_eliwood_normal_tool.ss2` | 2 Eliwood | `0x16` |
+
+**The same map has the same index in both modes** — `0x25` reads in an Eliwood-mode and a
+Hector-mode save alike. Only the on-screen number differs. The labels in this table come from
+the mode byte (see "Game mode"), NOT from `run_state.json`: the 2026-11-08 and 2026-11-01
+playthroughs say `"mode": "hector"` while their saves read mode 2, and the 2026-11-08 one is
+byte-identical in `gPlaySt` to a prep screen where the game greys Eliwood, not Hector.
+
+Same chapter, same value, every time; story order, rising values. It is the game's internal
+index, NOT the on-screen chapter number (gaiden chapters take indices of their own, so the
+two drift apart, and the on-screen number differs by mode while the index does not). `fe7_prep_select_units status` prints it, and `required_units.json` is
+keyed by it.
+
+### The Pick Units list is NOT the player array — CORRECTS "index == slot"
+
+The list showed 22 entries for a 29-unit array. Left out: Merlinus (`0x00000008`), the five
+bit-2 units (`0x0020000D`: Erk, Dorcas, Serra, Lowen, Dart) and Nils (`0x04210009`). The
+left column read Hector, Lyn, Oswin, Canas, Ninian, Hawkeye, Louise, Sain, Rebecca, Guy, Kent
+— so list index 18 is Guy, who is array slot 19. **"cursor index == player array slot"
+(Ch.7x, Ch.31x) only holds while no excluded unit sits below the cursor.** A UI-driven tool
+would have to map list index to slot; `fe7_prep_select_units` writes flags and never uses the list.
+
+### A bit-2 unit written to "deployed" is not placed — Confirmed by effect
+
+Erk `0x0020000D` → write `0x00200005` (bits 1+3 cleared), press Start: Erk stayed at
+`x = 0xFF`, the game counted 13 deployed, not 14. So the game does not revive or field a
+bit-2 unit, and the write is merely wasted. Bit 2 is FE8's `US_DEAD`; these five units are
+consistent with having died, but that is **Inferred** — no death was observed.
+
+### Merlinus — his own prompt and his own tile — Confirmed
+
+Start from the top menu brings up **"Deploy Merlinus? Yes / No"** (cursor on Yes) whenever
+he is in the party, **including at a full 14/14**. Answering Yes placed him at `(19,6)`, a
+tile that is not one of the 14 start tiles, so he never takes a slot from anyone. He is
+never in the Pick Units list. The question lands in the text buffer while the box is still
+opening, and **an A sent on first sight is swallowed** — wait ~0.8 s. After the box draws,
+"Yes" and "No" are written over the buffer NUL-terminated, so a NUL-stopping read sees only
+`"No"`; the question survives in the raw bytes after the NUL.
+
+### Start tiles can be counted without opening Pick Units — Inferred, matched 14/14
+
+A toggle never moves `+0x10` (x): units holding a start tile keep it until Start. So the
+number of listable units with `x != 0xFF` is the number of start tiles. On Ch.28 that gave
+14, the game's own cap. Untested when the roster is smaller than the tile count (the count
+is then the roster, which is also the most you could deploy).
+
+### Direct write, end to end — Confirmed by effect (Ch.28)
+
+Bench Pent and Louise, deploy Harken (`0x00200009 → 0x00200001`), Start: Harken stood on
+Louise's old tile `(13,5)`; Pent and Louise went to `x = 0xFF`. Deployed units read
+`0x00200000` after Start (bit 0 clears), benched `0x00200009`.
+
+### The prep top menu differs per chapter
+
+Ch.28: Pick Units, Items ("Manage your units' items. If Merlinus is in your party…"), a
+battle-info entry ("Valuable battle information can be viewed here…"), Check Map, Save.
+Ch.7x had Trade and Fortune instead. Opening Pick Units overwrites the buffer's start with
+its "Pick" header, so the top menu is recognisable by its help-text prefix and Pick Units
+is not mistaken for it.
+
+### Game mode — `0x0202BC13` — Confirmed for Eliwood (2) and Hector (3)
+
+FE8 keeps `chapterModeIndex` at `PlaySt+0x1B`; less the same 8 timer bytes that is `+0x13`.
+It reads **2** in every Eliwood-labelled save and **3** in every Hector-labelled one, and
+each value matches the lord the game greys in Pick Units: Eliwood on a mode-2 Dread Isle,
+Hector on a mode-3 Ch.28. Lyn mode (1) is untested. `fe7_prep_select_units` prints it and
+uses it to choose the per-mode list in `required_units.json`.
+
+### Forced units — the game's lock is a green name, nothing readable found
+
+Only Hector's name was green on Ch.28 (Hector mode); Eliwood and Lyn were benchable. On the
+Dread Isle in Eliwood mode only Eliwood was green; Hector and Lyn were benchable. So the
+**same index locks different units in different modes**, and the lock follows the mode's lord. Eliwood alone carried
+bit 13 (`0x00202001`), which is therefore NOT the lock. No flag marking a forced unit was
+found, which is why `fe7_prep_select_units` takes the list from `required_units.json`.
+
+### Chapter-index sequence and the deployment-limit cross-check — 2026-11-08
+
+`required_units.json` is generated from `deployment_source.json` (one row per chapter, mode
+and difficulty, by name) by `scripts/build_required_units.py`, which holds the name → index
+table. The table counts FE7's single chapter sequence: Lyn's tale `0x00`–`0x0B` (7x at
+`0x08`), then `0x0C` Taking Leave, `0x0D` Another Journey, … `0x16` Pirate Ship, `0x17` Dread
+Isle, … `0x25` Battle Before Dawn, `0x26` Night of Farewells, `0x27` Cog of Destiny, `0x28`
+Valorous Roland, `0x29` The Berserker, … `0x2E` Light — each mode-exclusive chapter in its own
+slot, shared maps once. Four indices were read from saves, and on all four prep screens the
+counted start tiles also equalled one of the source's limits for that chapter:
+
+| Index | Chapter | Start tiles counted | Source limit (normal, hard) |
+|---|---|---|---|
+| `0x17` | Dread Isle (Eliwood) | 12 | 12, 12 |
+| `0x25` | Battle Before Dawn (Hector) | 14 | 14, 10 |
+| `0x27` | Cog of Destiny (Eliwood) | 10 | 15, 10 |
+| `0x29` | The Berserker (Hector) | 3 | 3, 2 |
+
+The Berserker's 3 is distinctive, so the counting is right at least up to there. The pairs
+whose ORDER within the sequence is a guess (Lloyd/Linus `0x1F`/`0x20`, Kenneth/Jerme
+`0x23`/`0x24`) have different normal-mode limits, so the same check tells them apart.
+
+## The Dread Isle (index `0x17`, Eliwood mode) — `fe7_prep_select_units` end to end, 2026-11-08
+
+From Grant's Ch.17 prep (mGBA slot 1). 20-unit roster, cap 12, fog (vision byte 3).
+
+- **Inferred start tiles = 12 = the game's "12/12".** Second chapter it has matched.
+- **The list again excluded exactly the units the tool calls not deployable**: Merlinus
+  (`0x08`) and Rath, Nils, Wallace (`0x04210009`, bit 16 — away). The 16 listed were the
+  tool's 12 deployed + 4 benched, in array order.
+- **Pick Units opened AFTER direct writes is coherent with them**: Kent and Florina (written
+  deployed) blue, Lowen and Lyn (written benched) grey, count 12/12, "0 more units". The
+  desync recorded on Ch.31x is only for writes made while the screen is open.
+- **A story unit joins at Start**: Dart (`ch33`) was in no prep slot and appeared at slot 20,
+  `(8,6)`, on every start. A start report must not call such a unit a mistake.
+- **Merlinus via the prompt stood at `(1,9)`**, his own tile here as on Ch.28.
+- **A sub-screen shows the top menu's help text for ~250 ms after opening** (A on Items read
+  "Manage your…" before the first unit name replaced it). One matching read is not proof of
+  the top menu; the tool reads twice, 300 ms apart, before writing or pressing Start, and the
+  second read caught it when A and a `set` were sent back to back.
 
 # Enemy movement range — computable from ROM, no input needed — mapped 2026-09-10
 

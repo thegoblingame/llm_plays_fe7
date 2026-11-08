@@ -48,14 +48,14 @@ const PORT = Number(process.env.OVERLAY_PORT || 8777);
 
 const POLL_MS = 250; // how often to check the log for new bytes
 const RESCAN_MS = 2000; // how often to look for a newer log file
-const FEED_MAX = 10; // reason lines kept on screen
+const FEED_MAX = 10; // reason and commentary lines kept on screen
 
 // ---------------------------------------------------------------- state
 
 const state = {
   chapter: { num: null, title: null },
   units: [], // { slot, roster, charId, cls, name, portrait, level, hp, maxHp }
-  feed: [], // { id, t, tool, text }
+  feed: [], // { id, t, tool, text, kind: "reason" | "commentary", turn? }
   dead: [], // { name, portrait }  from roster.json, in the order written
   unrecruited: [], // { name, portrait }  ditto
   source: null, // which log file we are tailing
@@ -189,12 +189,13 @@ function applyActSelf(text) {
   return true;
 }
 
-function pushFeed(t, tool, text) {
+function pushFeed(t, tool, text, kind = "reason", turn = null) {
   const clean = String(text).replace(/\s+/g, " ").trim();
   if (!clean) return;
-  const last = state.feed[state.feed.length - 1];
-  if (last && last.text === clean) return; // a retried call repeats its reason
-  state.feed.push({ id: ++feedSeq, t, tool, text: clean });
+  // A retried call repeats its reason, and a retried fe7_end_turn repeats its
+  // commentary with the reason landing in between -- so look back a few lines.
+  if (state.feed.slice(-3).some((f) => f.kind === kind && f.text === clean)) return;
+  state.feed.push({ id: ++feedSeq, t, tool, text: clean, kind, turn });
   if (state.feed.length > FEED_MAX) state.feed.splice(0, state.feed.length - FEED_MAX);
 }
 
@@ -203,8 +204,18 @@ function ingest(rec) {
   if (!rec || typeof rec !== "object") return;
   if (rec.t) state.lastEventAt = rec.t;
 
-  if (rec.params?.reason && (rec.tool === "fe7_act" || rec.tool === "fe7_end_turn")) {
+  if (rec.params?.reason && (rec.tool === "fe7_act" || rec.tool === "fe7_end_turn" || rec.tool === "fe7_prep_select_units")) {
     pushFeed(rec.t, rec.tool, rec.params.reason);
+    dirty = true;
+  }
+
+  // The agent's thoughts on the chapter, from fe7_end_turn's `commentary`. The MCP
+  // server writes these as their own records, only for calls it accepted, right
+  // after the call's own record -- so they land below the end-turn reason and stay
+  // the newest line for the whole enemy phase. Never read from params: a refused
+  // call carries commentary there too.
+  if (rec.kind === "commentary" && typeof rec.text === "string") {
+    pushFeed(rec.t, rec.tool, rec.text, "commentary", Number.isFinite(rec.turn) ? rec.turn : null);
     dirty = true;
   }
 
