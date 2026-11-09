@@ -1,0 +1,124 @@
+{
+  "description": "Single-chapter cost runs: tools plus a little vision. Hector mode, Opus, low effort, one session per run.",
+  "sources": {
+    "result_cost_time": "playthroughs/<run>/usage.tsv",
+    "attempts_units_lost": "playthroughs/<run>/run_state.json"
+  },
+  "notes": [
+    "cost_usd is the session's total_cost_usd reported by the Claude CLI, priced at API rates; it may not match actual billing.",
+    "time_s is the session's wall-clock duration.",
+    "units_lost counts permadeaths in the winning attempt only; lost attempts are reloaded, so runs that did not win have null.",
+    "'not won (stopped itself)': the session ended without a PLAYTHROUGH_RESULT line (run.sh logged 'none').",
+    "'not won (hit attempt limit)': the session ended with PLAYTHROUGH_RESULT=RETRY at the per-session attempt limit."
+  ],
+  "runs": [
+    {
+      "run_folder": "playthroughs/2026-11-01_15-50",
+      "date": "2026-11-01 15:50",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "won",
+      "attempts": 1,
+      "units_lost": 1,
+      "units_lost_names": ["Oswin"],
+      "cost_usd": 7.41,
+      "time_s": 2413,
+      "time": "40m 13s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-01_16-33",
+      "date": "2026-11-01 16:33",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (stopped itself)",
+      "attempts": 3,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 11.51,
+      "time_s": 3727,
+      "time": "1h 02m 07s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-01_23-21",
+      "date": "2026-11-01 23:21",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (stopped itself)",
+      "attempts": 2,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 8.48,
+      "time_s": 2890,
+      "time": "48m 10s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-05_23-17",
+      "date": "2026-11-05 23:17",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (hit attempt limit)",
+      "attempts": 6,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 24.09,
+      "time_s": 7586,
+      "time": "2h 06m 26s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-06_08-04",
+      "date": "2026-11-06 08:04",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (hit attempt limit)",
+      "attempts": 5,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 18.48,
+      "time_s": 4957,
+      "time": "1h 22m 37s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-07_00-33",
+      "date": "2026-11-07 00:33",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (hit attempt limit)",
+      "attempts": 7,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 38.92,
+      "time_s": 8116,
+      "time": "2h 15m 16s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-08_11-04",
+      "date": "2026-11-08 11:04",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 2,
+      "units_lost": 3,
+      "units_lost_names": ["Marcus", "Bartre", "Dorcas"],
+      "cost_usd": 6.46,
+      "time_s": 2150,
+      "time": "35m 50s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-08_12-24",
+      "date": "2026-11-08 12:24",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 5,
+      "units_lost": 0,
+      "units_lost_names": [],
+      "cost_usd": 13.97,
+      "time_s": 4524,
+      "time": "1h 15m 24s"
+    }
+  ],
+  "totals": {
+    "runs": 8,
+    "won": 3,
+    "attempts": 31,
+    "cost_usd": 129.32,
+    "time_s": 36363,
+    "time": "10h 06m 03s"
+  },
+  "cost_per_attempt_usd": {
+    "Ch.28 Battle before Dawn": { "attempts": 24, "cost_usd": 108.89, "per_attempt": 4.54 },
+    "Ch.18 Pirate Ship": { "attempts": 7, "cost_usd": 20.43, "per_attempt": 2.92 }
+  }
+}
