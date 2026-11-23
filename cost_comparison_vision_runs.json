@@ -1,0 +1,128 @@
+{
+  "description": "Single-chapter cost runs: vision only (screenshots and button presses). Eliwood mode, Opus, low effort, one session per run.",
+  "sources": {
+    "result_cost_time": "playthroughs/<run>/usage.tsv",
+    "attempts_units_lost": "playthroughs/<run>/run_state.json"
+  },
+  "notes": [
+    "Mode is Eliwood, not Hector. run_state.json says \"hector\" because run.sh copied the strategy template's section heading, not the game's mode (fixed 2026-11-08). Pick Units screenshots: on Ch.28, Hector's name is plain white, so he isn't locked and it isn't Hector mode; on Ch.18 (2026-11-08_12-25), Eliwood's name is green, the Eliwood-mode lock.",
+    "cost_usd is the session's total_cost_usd reported by the Claude CLI, priced at API rates; it may not match actual billing.",
+    "time_s is the session's wall-clock duration.",
+    "units_lost counts permadeaths in the winning attempt only; lost attempts are reloaded, so runs that did not win have null.",
+    "'not won (hit usage limit)': the session was cut off by the 5-hour subscription usage limit partway through its 5th attempt (run.sh logged 'none'); attempts counts that unfinished attempt. Attempts 1-4 were game overs.",
+    "Vision only in practice: the fe7_* tools were loaded in every session but never called; the only game tools used were mgba_screenshot and mgba_press_sequence.",
+    "The 2026-11-01_14-22 win also left Jaffar unrecruited."
+  ],
+  "runs": [
+    {
+      "run_folder": "playthroughs/2026-11-01_14-22",
+      "date": "2026-11-01 14:22",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "won",
+      "attempts": 3,
+      "units_lost": 1,
+      "units_lost_names": [
+        "Florina"
+      ],
+      "cost_usd": 119.59,
+      "time_s": 7688,
+      "time": "2h 08m 08s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-01_23-02",
+      "date": "2026-11-01 23:02",
+      "chapter": "Ch.28 Battle before Dawn",
+      "result": "not won (hit usage limit)",
+      "attempts": 5,
+      "units_lost": null,
+      "units_lost_names": null,
+      "cost_usd": 134.18,
+      "time_s": 8000,
+      "time": "2h 13m 20s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-07_17-22",
+      "date": "2026-11-07 17:22",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 4,
+      "units_lost": 4,
+      "units_lost_names": [
+        "Lowen",
+        "Oswin",
+        "Dorcas",
+        "Rebecca"
+      ],
+      "cost_usd": 52.89,
+      "time_s": 6081,
+      "time": "1h 41m 21s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-08_11-00",
+      "date": "2026-11-08 11:00",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 2,
+      "units_lost": 2,
+      "units_lost_names": [
+        "Oswin",
+        "Bartre"
+      ],
+      "cost_usd": 19.08,
+      "time_s": 3665,
+      "time": "1h 01m 05s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-08_12-25",
+      "date": "2026-11-08 12:25",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 3,
+      "units_lost": 1,
+      "units_lost_names": [
+        "Dorcas"
+      ],
+      "cost_usd": 34.73,
+      "time_s": 3987,
+      "time": "1h 06m 27s"
+    },
+    {
+      "run_folder": "playthroughs/2026-11-08_13-36",
+      "date": "2026-11-08 13:36",
+      "chapter": "Ch.18 Pirate Ship",
+      "result": "won",
+      "attempts": 1,
+      "units_lost": 5,
+      "units_lost_names": [
+        "Dorcas",
+        "Oswin",
+        "Lowen",
+        "Rebecca",
+        "Bartre"
+      ],
+      "cost_usd": 9.13,
+      "time_s": 1933,
+      "time": "32m 13s"
+    }
+  ],
+  "totals": {
+    "runs": 6,
+    "won": 5,
+    "attempts": 18,
+    "cost_usd": 369.6,
+    "time_s": 31354,
+    "time": "8h 42m 34s"
+  },
+  "cost_per_attempt_usd": {
+    "Ch.28 Battle before Dawn": {
+      "attempts": 8,
+      "cost_usd": 253.77,
+      "per_attempt": 31.72
+    },
+    "Ch.18 Pirate Ship": {
+      "attempts": 10,
+      "cost_usd": 115.83,
+      "per_attempt": 11.58
+    }
+  }
+}

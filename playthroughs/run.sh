@@ -2,15 +2,20 @@
 # One fresh Claude session per chapter, until the game is beaten, a session reports
 # LOST or STUCK, a STOP file appears, or MAX_SESSIONS is reached.
 #
-#   usage:  playthroughs/run.sh [--runbook PATH] [--max-attempts N] <chapter> [model] [effort]
+#   usage:  playthroughs/run.sh [--runbook PATH] [--template PATH] [--max-attempts N] <chapter> [model] [effort]
 #           e.g.  playthroughs/run.sh 13 fable medium
 #                 playthroughs/run.sh --runbook vision_runbook.md 13 fable medium
+#                 playthroughs/run.sh --runbook BAREBONES_VISION_RUNBOOK.md --template BAREBONES_STRATEGY_TEMPLATE.md 13 fable medium
 #           <chapter> is the chapter loaded in the emulator right now: a number (13), a gaiden
 #           (7x, 19xx), "prologue" or "final". It is matched against the "### ..." headings of
-#           PLAYTHROUGH_STRATEGY_TEMPLATE.md and written to run_state.json. When continuing a
+#           the strategy template and written to run_state.json, with the story mode
+#           (lyn / eliwood / hector) read from the loaded game over the bridge. When continuing a
 #           playthrough that already has a run_state.json, pass "-" and the file is left alone.
 #           --runbook is the runbook every session is given (default PLAYTHROUGH_RUNBOOK.md). A
 #           relative PATH is tried from the current directory first, then from llm_plays_fe7/.
+#           --template is the strategy template copied into a new playthrough folder as
+#           CURRENT_RUN_STRATEGY.md (default PLAYTHROUGH_STRATEGY_TEMPLATE.md); same path rules
+#           as --runbook. Ignored for a continued playthrough whose CURRENT_RUN_STRATEGY.md exists.
 #           --max-attempts is how many attempts at a chapter one session may start before it
 #           hands over to a fresh session (PLAYTHROUGH_RESULT=RETRY), to keep sessions short of
 #           compaction. Counted from run_state.json's `attempts` when the session starts.
@@ -28,7 +33,7 @@
 #
 # Every launch of this script is one PLAYTHROUGH, and gets its own folder named for the moment
 # it started:  playthroughs/<YYYY-MM-DD_HH-MM>/   containing
-#   CURRENT_RUN_STRATEGY.md   the run's strategy file: a copy of PLAYTHROUGH_STRATEGY_TEMPLATE.md made
+#   CURRENT_RUN_STRATEGY.md   the run's strategy file: a copy of the strategy template (--template) made
 #                  when the folder is created, read by every session and written to at the end of each
 #   run_state.json the run's machine-readable state: current chapter, attempts at it, chapters
 #                  completed, the dead and the unrecruited. Created here, maintained by the sessions
@@ -55,8 +60,9 @@ PT="$ROOT/playthroughs"
 MCP_SERVER="$(cd "$ROOT/../mcp-mgba" && pwd)/dist/index.js"
 # Paths handed to node must be Windows-style: Git Bash's /c/Users/... is read by node as C:\c\Users\...
 winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
-# --runbook PATH (or --runbook=PATH) may appear anywhere; everything else stays positional.
+# --runbook PATH / --template PATH (or =PATH) may appear anywhere; everything else stays positional.
 RUNBOOK="$ROOT/PLAYTHROUGH_RUNBOOK.md"
+TEMPLATE="$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md"
 MAX_ATTEMPTS=""
 args=()
 while (( $# )); do
@@ -67,6 +73,9 @@ while (( $# )); do
     --runbook)   [[ $# -ge 2 ]] || { echo "ERROR: --runbook needs a path" >&2; exit 1; }
                  RUNBOOK="$2"; shift 2 ;;
     --runbook=*) RUNBOOK="${1#--runbook=}"; shift ;;
+    --template)   [[ $# -ge 2 ]] || { echo "ERROR: --template needs a path" >&2; exit 1; }
+                  TEMPLATE="$2"; shift 2 ;;
+    --template=*) TEMPLATE="${1#--template=}"; shift ;;
     *)           args+=("$1"); shift ;;
   esac
 done
@@ -75,6 +84,10 @@ set -- "${args[@]+"${args[@]}"}"
 if [[ ! -f "$RUNBOOK" && "$RUNBOOK" != /* && -f "$ROOT/$RUNBOOK" ]]; then RUNBOOK="$ROOT/$RUNBOOK"; fi
 [[ -f "$RUNBOOK" ]] || { echo "ERROR: runbook $RUNBOOK not found" >&2; exit 1; }
 RUNBOOK="$(cd "$(dirname "$RUNBOOK")" && pwd)/$(basename "$RUNBOOK")"
+# Same for the strategy template.
+if [[ ! -f "$TEMPLATE" && "$TEMPLATE" != /* && -f "$ROOT/$TEMPLATE" ]]; then TEMPLATE="$ROOT/$TEMPLATE"; fi
+[[ -f "$TEMPLATE" ]] || { echo "ERROR: strategy template $TEMPLATE not found" >&2; exit 1; }
+TEMPLATE="$(cd "$(dirname "$TEMPLATE")" && pwd)/$(basename "$TEMPLATE")"
 [[ -z "$MAX_ATTEMPTS" || "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: --max-attempts must be a positive whole number, not '$MAX_ATTEMPTS'" >&2; exit 1; }
 CHAPTER_ARG="${1:-}"
 MODEL="${2:-fable}"
@@ -133,11 +146,27 @@ read_attempts() {
 }
 
 [[ -f "$MCP_SERVER" ]] || { echo "ERROR: $MCP_SERVER not found — run npm run build in mcp-mgba" >&2; exit 1; }
-[[ -f "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" ]] || { echo "ERROR: PLAYTHROUGH_STRATEGY_TEMPLATE.md missing" >&2; exit 1; }
-[[ -n "$CHAPTER_ARG" ]] || { echo "usage: playthroughs/run.sh [--runbook PATH] <chapter> [model] [effort]   (chapter: 13, 7x, prologue, final; or - to keep an existing run_state.json)" >&2; exit 1; }
+[[ -n "$CHAPTER_ARG" ]] || { echo "usage: playthroughs/run.sh [--runbook PATH] [--template PATH] [--max-attempts N] <chapter> [model] [effort]   (chapter: 13, 7x, prologue, final; or - to keep an existing run_state.json)" >&2; exit 1; }
 
-# Resolve a chapter argument to the exact "### ..." heading in the template, and the mode
-# ("## Lyn mode" / "## Hector mode") that heading sits under. Prints "mode<TAB>heading".
+# The story mode of the game loaded in the emulator, read from the game itself: gPlaySt+0x13
+# (0x0202BC13; 1 Lyn, 2 Eliwood, 3 Hector — RAM.md "Game mode"), over the mGBA bridge
+# (MGBA_PORT, default 8765). Prints lyn / eliwood / hector, or nothing if the bridge cannot be
+# reached or the byte is not 1-3.
+read_game_mode() {
+  local v
+  v=$(node --input-type=module -e '
+import { pathToFileURL } from "node:url";
+const { MgbaClient } = await import(pathToFileURL(process.argv[1]).href);
+setTimeout(() => process.exit(2), 10000).unref();
+const m = new MgbaClient("127.0.0.1", Number(process.env.MGBA_PORT ?? 8765));
+try { console.log(await m.call("read8", { address: 0x0202bc13 })); } finally { m.disconnect(); }
+' "$(winpath "$(dirname "$MCP_SERVER")/mgba.js")" 2>/dev/null)
+  case "$v" in 1) echo lyn ;; 2) echo eliwood ;; 3) echo hector ;; esac
+}
+
+# Resolve a chapter argument to the exact "### ..." heading in the template. Prints the heading.
+# (The template's "## Lyn mode" / "## Hector mode" sections only split the chapter list by
+# number, so they say nothing about which mode the loaded save is in; read_game_mode does that.)
 resolve_chapter() {
   local want chapter
   chapter=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')   # not ${1,,}: macOS ships bash 3.2
@@ -149,9 +178,8 @@ resolve_chapter() {
   # The template may carry CRLF line endings; strip the CR before matching.
   awk -v pat="$want" '
     { sub(/\r$/, "") }
-    /^## /  { mode = tolower($0); sub(/^## /, "", mode); sub(/ mode$/, "", mode) }
-    tolower($0) ~ pat { sub(/^### /, ""); print mode "\t" $0; exit }
-  ' "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md"
+    tolower($0) ~ pat { sub(/^### /, ""); print; exit }
+  ' "$TEMPLATE"
 }
 # The playthrough folder: a new one per launch, named for the start time, unless the human
 # points PLAYTHROUGH_DIR at an existing one to continue it.
@@ -162,7 +190,11 @@ else
 fi
 mkdir -p "$RUN/states" "$RUN/sessions" "$RUN/screenshots" "$RUN/runs"
 # The run's strategy file: a fresh copy of the template for a new playthrough, left alone when continuing one.
-[[ -f "$RUN/CURRENT_RUN_STRATEGY.md" ]] || cp "$ROOT/PLAYTHROUGH_STRATEGY_TEMPLATE.md" "$RUN/CURRENT_RUN_STRATEGY.md"
+if [[ -f "$RUN/CURRENT_RUN_STRATEGY.md" ]]; then
+  echo "note: $RUN/CURRENT_RUN_STRATEGY.md already exists; keeping it (template not copied)."
+else
+  cp "$TEMPLATE" "$RUN/CURRENT_RUN_STRATEGY.md"
+fi
 # The run's state file. Written once here with the chapter the human says is loaded; from
 # then on the sessions own it (attempts, completed, dead, unrecruited).
 STATE_JSON="$RUN/run_state.json"
@@ -170,8 +202,10 @@ if [[ -f "$STATE_JSON" ]]; then
   [[ "$CHAPTER_ARG" == "-" ]] || echo "note: $STATE_JSON already exists; ignoring chapter argument '$CHAPTER_ARG'."
 else
   [[ "$CHAPTER_ARG" != "-" ]] || { echo "ERROR: no run_state.json in $RUN; name the chapter that is loaded." >&2; exit 1; }
-  IFS=$'\t' read -r mode heading <<< "$(resolve_chapter "$CHAPTER_ARG")"
-  [[ -n "$heading" ]] || { echo "ERROR: no '### Chapter $CHAPTER_ARG — ...' heading in PLAYTHROUGH_STRATEGY_TEMPLATE.md" >&2; exit 1; }
+  heading=$(resolve_chapter "$CHAPTER_ARG")
+  [[ -n "$heading" ]] || { echo "ERROR: no '### Chapter $CHAPTER_ARG — ...' heading in $TEMPLATE" >&2; exit 1; }
+  mode=$(read_game_mode)
+  [[ -n "$mode" ]] || { echo "ERROR: could not read the game mode from the emulator (0x0202BC13 over the bridge on port ${MGBA_PORT:-8765}). Is mGBA running with the bridge script and the chapter loaded?" >&2; exit 1; }
   "$PYTHON" - "$STATE_JSON" "$mode" "$heading" <<'EOF'
 import json, sys
 path, mode, heading = sys.argv[1:4]
@@ -195,6 +229,7 @@ with open(path, "w", encoding="utf-8") as f:
 EOF
 echo "--- playthrough folder: $RUN"
 echo "--- runbook: $RUNBOOK"
+echo "--- strategy template: $TEMPLATE"
 echo "--- attempts per session: ${MAX_ATTEMPTS:-no limit}"
 
 # Continue numbering from the last session on disk, so a restarted loop does not reuse tags.

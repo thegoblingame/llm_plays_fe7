@@ -1,0 +1,124 @@
+{
+  "model": "opus",
+  "effort": "low",
+  "mode": "lyn",
+  "current_chapter": "Chapter 20 — Dragon's Gate",
+  "attempts": 8,
+  "completed": [
+    {
+      "chapter": "Prologue â€” A Girl from the Plains",
+      "attempts": 2,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 1 â€” Footsteps of Fate",
+      "attempts": 1,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 2 â€” Sword of Spirits",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 3 â€” Band of Mercenaries",
+      "attempts": 1,
+      "session": "s04"
+    },
+    {
+      "chapter": "Chapter 4 â€” In Occupation's Shadow",
+      "attempts": 2,
+      "session": "s05"
+    },
+    {
+      "chapter": "Chapter 5 â€” Beyond the Borders",
+      "attempts": 1,
+      "session": "s06"
+    },
+    {
+      "chapter": "Chapter 6 â€” Blood of Pride",
+      "attempts": 1,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 7 â€” Siblings Abroad",
+      "attempts": 1,
+      "session": "s08"
+    },
+    {
+      "chapter": "Chapter 8 â€” Vortex of Strategy",
+      "attempts": 3,
+      "session": "s09"
+    },
+    {
+      "chapter": "Chapter 9 â€” A Grim Reunion",
+      "attempts": 1,
+      "session": "s12"
+    },
+    {
+      "chapter": "Chapter 10 â€” The Distant Plains",
+      "attempts": 1,
+      "session": "s13"
+    },
+    {
+      "chapter": "Chapter 11 â€” Another Journey",
+      "attempts": 1,
+      "session": "s14"
+    },
+    {
+      "chapter": "Chapter 12 â€” Birds of a Feather",
+      "attempts": 1,
+      "session": "s15"
+    },
+    {
+      "chapter": "Chapter 13 â€” In Search of Truth",
+      "attempts": 1,
+      "session": "s16"
+    },
+    {
+      "chapter": "Chapter 14 â€” False Friends",
+      "attempts": 1,
+      "session": "s17"
+    },
+    {
+      "chapter": "Chapter 15 â€” Talons Alight",
+      "attempts": 1,
+      "session": "s18"
+    },
+    {
+      "chapter": "Chapter 16 â€” Noble Lady of Caelin",
+      "attempts": 2,
+      "session": "s21"
+    },
+    {
+      "chapter": "Chapter 17 — Whereabouts Unknown",
+      "attempts": 3,
+      "session": "s22"
+    },
+    {
+      "chapter": "Chapter 18 — Pirate Ship",
+      "attempts": 6,
+      "session": "s28"
+    },
+    {
+      "chapter": "Chapter 19 — The Dread Isle",
+      "attempts": 1,
+      "session": "s29"
+    }
+  ],
+  "dead": [
+    "Florina",
+    "Wil",
+    "Lucius",
+    "Erk",
+    "Matthew",
+    "Serra",
+    "Lowen",
+    "Rebecca",
+    "Dorcas",
+    "Bartre",
+    "Kent",
+    "Dart"
+  ],
+  "unrecruited": []
+}

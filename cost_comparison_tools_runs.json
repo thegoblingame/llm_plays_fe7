@@ -1,10 +1,11 @@
 {
-  "description": "Single-chapter cost runs: tools plus a little vision. Hector mode, Opus, low effort, one session per run.",
+  "description": "Single-chapter cost runs: tools plus a little vision. Eliwood mode, Opus, low effort, one session per run.",
   "sources": {
     "result_cost_time": "playthroughs/<run>/usage.tsv",
     "attempts_units_lost": "playthroughs/<run>/run_state.json"
   },
   "notes": [
+    "Mode is Eliwood, not Hector. run_state.json says \"hector\" because run.sh copied the strategy template's section heading, not the game's mode (fixed 2026-11-08). Checked directly for one run only: 2026-11-01_16-33's Pick Units screenshot shows the same save as the vision Ch.28 runs (Eliwood Lv12, same items), with Hector unlocked, so not Hector mode. The other runs left no usable Pick Units screenshot; Eliwood mode is inferred for them (Ch.28 runs from the same chapter start; Ch.18 from the only Ch.18 test state, 18_eliwood_normal_tool.ss2).",
     "cost_usd is the session's total_cost_usd reported by the Claude CLI, priced at API rates; it may not match actual billing.",
     "time_s is the session's wall-clock duration.",
     "units_lost counts permadeaths in the winning attempt only; lost attempts are reloaded, so runs that did not win have null.",

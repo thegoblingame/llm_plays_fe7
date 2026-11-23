@@ -1,0 +1,59 @@
+{
+  "mode": "hector",
+  "current_chapter": "Game complete — no chapter loaded",
+  "attempts": 0,
+  "completed": [
+    {
+      "chapter": "Chapter 25 — Crazed Beast",
+      "attempts": 1,
+      "session": "s01"
+    },
+    {
+      "chapter": "Chapter 26 — Unfulfilled Heart",
+      "attempts": 2,
+      "session": "s02"
+    },
+    {
+      "chapter": "Chapter 27 — Pale Flower of Darkness",
+      "attempts": 1,
+      "session": "s03"
+    },
+    {
+      "chapter": "Chapter 28 — Battle before Dawn",
+      "attempts": 7,
+      "session": "s07"
+    },
+    {
+      "chapter": "Chapter 29 — Cog of Destiny",
+      "attempts": 3,
+      "session": "s11"
+    },
+    {
+      "chapter": "Chapter 30 — The Berserker",
+      "attempts": 1,
+      "session": "s12"
+    },
+    {
+      "chapter": "Chapter 31 — Sands of Time",
+      "attempts": 1,
+      "session": "s13"
+    },
+    {
+      "chapter": "Chapter 31x — Battle Preparations (gaiden)",
+      "attempts": 1,
+      "session": "s14"
+    },
+    {
+      "chapter": "Chapter 32 — Victory or Death",
+      "attempts": 1,
+      "session": "s18"
+    },
+    {
+      "chapter": "Final Chapter — Light (two parts)",
+      "attempts": 5,
+      "session": "s23"
+    }
+  ],
+  "dead": ["Dart", "Wil", "Matthew", "Harken", "Canas", "Vaida"],
+  "unrecruited": ["Farina", "Karel", "Nino", "Jaffar", "Karla", "Renault"]
+}

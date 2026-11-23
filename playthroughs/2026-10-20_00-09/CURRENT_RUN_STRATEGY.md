@@ -962,7 +962,7 @@ None.
 
 **Objectives:**
 
-_(filled in by the agent)_
+"Seize gate" (in-game "Ch. 30: Victory or Death"; no prep screen). Map 28x30. The gate (24,3) is in the NE, behind 2C walls; it is entered from (24,4). The boss (ch85, cls23, 68 HP, Def 21, Res 25, Bolting x5 at 3-10 + Fimbulvetr 1-2) sits on it. The army starts in the SW corner (x0-7, rows 25-29) with Merlinus's tent at (3,29). Renault's ruins are at (5,2) in the NW (visit within 11 turns).
 
 **Recruits:**
 
@@ -972,7 +972,116 @@ _(filled in by the agent)_
 
 **Agent notes:**
 
-_(none yet)_
+**s38 attempt 1 (RESTARTED on turn 14 after Matthew (T2), Nils (T5) and Wil (T13) died; Merlinus's tent was knocked out T12).**
+- **Sage E#12 (9,17), Bolting 3-10:** it kills Res-0 units from 16 tiles away (Matthew died T2). Kill it on T2-3; it walks onto the fort (5,21). Marcus 23x2 kills it with no counter (it equips Bolting).
+- Turn-1 wedge in the corner worked: Marcus/Hawkeye/Hector walls, the rest on tiles `fe7_threat` shows as '.'. The two paladins from the forts (4,20)/(5,21) died on Marcus's counters on EP1. The generals (13,22-24) and the warrior arrive T3-5 and die to Pent's Elfire (Res 2-4, doubles) and Rapier/axes.
+- **Ballistas (trap array 0x0203A518): Iron Ballista (3,11), Ballista (4,25) (empty, next to the start), Iron (19,28), Iron (11,17), Killer (16,11), (17,1), (26,9). Range is about 15 tiles, not 10.** Sniper E#20 walks onto (3,11) on T4 and one-shot Nils at distance 15. E#21 sits on (19,28).
+- **Reinforcements, every turn from about T6:** NW fighters/warriors appear AT (0-1,9-12) (T7), lance cavalry and paladins at (1,0)/(3,0)/(7-9,0-1), fighters at (16,0), nomad troopers (steel bow + steel sword, Spd 15-18) at the SE forts (26-27,28-29), wyverns at (27,16-18), and **paladins spawn on the start-area forts (4,20)/(5,21) from T11**. By T10 there were 49 enemies. The 8 centre wyvern lords and the falcon knights start moving about T12.
+- The west corridor (x0-1, rows 15-19; x2-4 are peaks) is a good 2-wide choke. But the army got squeezed between the NW waves and the SE nomads, with fliers landing on the peaks.
+- **Mistake: a canto after rescue can't cross the forest (1,19)** (mounted forest cost). Eliwood got stranded at (2,21) carrying Nino at half Spd and dropped to 8 HP. Check `fe7_reachable` before relying on canto.
+- **Next attempt:** turtle T1-5 the same way but keep Res-0/flier units out of the sage's reach on T1-2. Then move FAST. Turtling at the start just lets the reinforcement waves pile up, and the goal is a seize.
+
+**s38 attempt 2 (RESTARTED on turn 13 after Dart and Wil (T11) and Nils and Matthew (T12) died).**
+- **T1-T5 opening, no deaths (copy this):** use the T1 corner wedge plus trades: Pent gives an Elixir to Nils, Louise gives Elfire to Pent, Lyn gives the Killer Axe to Hector, Dart gives the Killer Bow to Louise. On T2-T4 **carry every soft unit** (Eliwood-Nils, Hector-Wil, Hawkeye-Nino, Lyn-Florina, Pent-Matthew, Marcus-Dart) so the Bolting sage has only tanks to hit. On T5 the sage walks next to the group: Louise's Silver Bow kills it (17x2). Pent's Elfire and Marcus finish the generals and the warrior on T4-T5. **The convoy holds only a Killing Edge, Fire and Lightning.**
+- `fe7_act`'s Rapier/Killer Axe `weapon_slot` was refused ("single entry") in this attempt; only slot 0 got used. A forecast with `weapon_slot` re-equips, but it failed the same way.
+- **The NW lance reinforcements (cls33) are FLIERS.** Louise's bows are effective (30x2, one-round). They arrive in pairs from (1,0)/(3,0) every turn from T6 and reach the SW corner around T10. SE nomad troopers (steel bow + steel sword, AS 15-18) arrive in pairs every turn from T8 and reach the SW around T11. Paladins spawn on the start forts (4,20)/(5,21) from T11. The centre wyvern pack plus 2 falcon knights start moving around T11-12. By T12 there were 50 enemies.
+- **Sitting in the SW corner fails.** Fliers and bows reach any soft unit that isn't fully enclosed or carried, and a dropped unit can't act or move on its next turn. The ballista sniper at (19,28) shot a tank once; the one at (3,11) waits for weak targets.
+- Next plan: clear the opening the same way (T1-T5), then march at once, with softies carried.
+
+**s38/s41 attempt 3 (RESTARTED on turn 16 after Canas (T3), Nino (T4), then Marcus and the Matthew he carried (EP15) died).**
+- The opening went as planned, then the army went north up the west corridor (x0-1, rows 13-19). By T13-15 it was boxed at rows 13-14 x0-4. Fighters and paladins came from the north, 4-6 nomad troopers and cavaliers came up the corridor from the south (nomads DO enter forest; one reached (1,15) from (2,20) in one turn), and wyverns plus a wyvern lord came from the east. With 4 real tanks (Hector, Marcus, Hawkeye, Pent) and 10 soft units, every formation was one body short. Marcus (40/40 HP, carrying Matthew, so half speed and doubled) died in one enemy phase to nomad bows plus fighters.
+- **Carrying halves Skl too**: carriers' hit rates fall to 30-60%. Only Pent (unencumbered) and Louise's effective bows are reliable killers. Nomad troopers (AS 16-17) double any carrier and Lyn.
+- `fe7_act` bug: after a free `trade`, the resumed `attack` committed a Wait (no damage). Do the trade with one unit and the attack with another, or attack first.
+- Leaving a weak enemy (1-6 HP) next to a wall unit works as a cork; killing it opens the tile to a stronger enemy.
+- Next attempt: do NOT walk into the west corridor. It is where the NW waves, the south fort/nomad waves and the wyvern pack converge.
+- Correction: slot #13 (ch28, cls44, 28 HP, at (3,29)) is **Merlinus's tent**, not Canas. Its "death" only means he retreats. Canas isn't in this chapter.
+
+**s41 attempt 4 (in progress; notes written at T21).**
+- T1-T6 opening with no deaths: the T1 corner wedge and trades, then carry Matthew, Nils, Wil, Nino and Florina on T2. On T3 the sage walks onto the (5,21) fort: Hawkeye **takes** Matthew off Marcus, and the unencumbered Marcus doubles the sage (23x2, no counter). The generals and the warrior then die to Pent and the tanks on T4-T6.
+- After T6 the army moved east into the south strip (x8-12, rows 26-29). This strip is outside the wyvern nest's reach, so the only threats are waves arriving piecemeal. **Wyvern lure:** an unencumbered Marcus at full HP on (13,24), a tile only 2 nest wyverns can reach, killed 2 wyverns on counters in one enemy phase. The 6-wyvern nest at (14-16,15-18) never moves unless a unit enters its range.
+- **The (19,28) iron ballista sniper (E#21) hits anything in the strip (~18-21 to soft units).** It killed Nino and nearly killed Lyn twice. Keep the lords carried or at full HP while in its range. Kill it before lingering in the south.
+- Florina died after being dropped as a wall to shield Lyn. Nino died to the ballista.
+- `fe7_act` quirks: (1) a **mounted unit that GIVES gets put straight into canto** with only Wait offered, so it cannot then rescue (a foot unit can). (2) After a trade, the tool often can't find the menu; do the attack or staff by hand. (3) Carried units can be traded with directly (Hawkeye traded with Pent's passenger Nils), so a carried unit's Elixir is reachable. (4) Hector's attack was refused with weapon_slot for Silver/Killer Axe ("single entry"); only his Iron Axe ever came up.
+
+**s41 attempt 4 result: GAME OVER on enemy phase 43 (Eliwood killed by the (3,11) ballista at 14 tiles). Deaths before that: Florina, Nino, Marcus (EP28), Wil (EP31), Pent and Louise (EP38), Nils (EP39).**
+- **Reinforcements STOP.** The enemy count sat at the 50 cap until about T35, then fell: 44 (T36), 37 (T38), 29 (T40), 24 (T43), with no new spawns. After that every remaining enemy is static (nest, snipers, shamans, NW cls0C pair, sage, boss), and the whole SW (x0-12, rows 20-29) shows '.' on `fe7_threat`. **A future attempt only has to survive about 35 turns with healing to spare, then walk.**
+- **`fe7_threat` ignores ballistas.** The iron ballista at (3,11) (sniper E#20) killed a 5-HP Eliwood standing on (3,25), 14 tiles away, on a "safe" tile. Treat everything within about 15 tiles of (3,11), (19,28), (11,17), (16,11), (17,1) and (26,9) as unsafe for a wounded unit.
+- **The south-strip turtle at (9-12,26-29) held about 12 turns but bled out.** Fliers stand on the peaks, so the "pocket" (11,29) has a hole at (12,29). Eliwood carrying Lyn has half Spd and gets doubled by every wyvern (14x2 per phase). The six Elixirs and Mend ran out by T35; once Pent died the attempt was over. Weapons wore out too: Hawkeye's Killer and Silver Axes broke by T38, and Hector is down to an Iron Axe x17.
+- What worked: Hawkeye's Killer Axe crits (54%). Louise's effective bows on wyverns (Killer Bow, 50% crit). Pent's Elfire (Res 2-3 soldiers and wyvern lords die in one hit). Leaving 1-12 HP soldiers next to Hector as corks (they deal him 0). Eliwood taking Elixirs from carried units (Nils) or from Pent by trade, then drinking.
+- **Boss numbers (read): Mag 24, Skl 20, Spd 17, Def 21, Res 25, 68 HP.** Bolting x5 (3-10) plus a 1-2 tome. No physical unit we had did more than about 15 per hit, so keep Hawkeye's Killer Axe and Lyn's Silver Axe x20 for him. Lyn carries a Silver Axe, Hero Crest and Blue Gem; Dart carries a Silver Bow and an Iron Axe.
+- Tool notes: `fe7_act` trade/item/staff very often reports "action menu could not be located" (Pent, Eliwood, Louise). The manual path always worked: `fe7_inspect` the unit, then A, (move), A for the menu, then Item = Down from the top, Up wraps to the last item, then A, A. Trading with a CARRIED unit through `fe7_act` targets the carrier; do it by hand and cycle the list with Down.
+
+**s41 attempt 5 result: GAME OVER on enemy phase 14 (Lyn killed in the SW corner). Dart died EP13.**
+- Opening again cost nothing through T7. T1: the soft units stand on the corner tiles `fe7_threat` shows as '.'; Louise swaps an Elfire for one of Pent's Elixir stacks; Lyn gives the Killer Axe to Hawkeye. Marcus fronts at (3,26), and both fort paladins die on his counters. T2: carry Nils (Eliwood), Wil (Hector), Matthew (Hawkeye), Nino (Pent) and Florina (Lyn). Louise gives Marcus an Elixir. T3: the sage walks onto the (5,21) fort; Marcus doubles it from (4,21), 24x2, no counter. Pent's Elfire plus Hawkeye's Silver Axe kill the general (7,27); Hector chips the knights. T4: Pent and Louise kill the warrior.
+- **CONFIRMED: a unit standing on a reinforcement fort blocks that spawn.** With Marcus on (5,21), soldiers kept appearing on (4,20) but never on (5,21), on two separate turns. The spawn resumed the turn he left.
+- **Ballista range is at least 14 tiles.** The (19,28) iron ballista hit Dart for 21 at (5,28), 14 tiles away. Corner tiles x0-3, rows 26-29 are 16 or more tiles from both (19,28) and (3,11).
+- The corner fortress worked while it was intact: lords at (0,29)/(1,29), walls at (0,28)/(1,28)/(2,28), Hawkeye (0,27), Hector (1,27), tent (3,29). **It failed the moment I pulled the walls out (T12-14) to chase nomads.** That left (1,28)/(2,29) open, and a wyvern lord from the nest, which starts moving about T12, reached Lyn. RULE: never move a wall unit while a lord sits inside; let enemies come to the walls and only shoot from inside.
+- Dart (def 6) is not a wall: three nomads (steel bow + steel sword) killed him from full HP on a 3-threat tile. Marcus burns lances fast on a fort (8 + 12 uses gone by T13); give him Hawkeye's Silver and Killer Lances on T1-2.
+
+**s41 attempt 6 result: GAME OVER on enemy phase 12 (Lyn killed at (1,29) while carrying Nils). Merlinus's tent fell EP11.**
+- **Carrying halves Spd, so a carrier gets doubled.** Lyn (29 HP, def 6) carrying Nils was doubled by an enemy reaching her (most likely a nomad's bow from (3,29) once the tent fell). A lord must never carry anyone on a tile any enemy can reach, even at range 2.
+- **Merlinus's tent is a weak wall.** Every unit targets it (28 HP, def 7): the sage's Bolting, the general and wyverns. Once it falls, (3,29) opens next to the inner tiles. Only a staff user standing next to it (2,28)/(2,29)/(3,28)/(4,29) can heal it.
+- **Merlinus's convoy** (the Merch command when standing next to the tent) holds Fire x40, Lightning and a Killing Edge. Pent starts with no tome if Louise's Elfires go elsewhere; take Fire from the convoy on T1-2 (deposit an Elixir first if Pent is full). Merch then Staff in the same turn works.
+- **Plan for attempt 7 (v4 corner fortress, all 13 units, no carrier on any reachable tile):**
+
+| Tile | Unit | Why it is safe enough |
+| --- | --- | --- |
+| (0,29) | Lyn + Nils | reachable by nothing, not even at range 2 |
+| (0,28) | Eliwood + Wil | reachable by nothing, not even at range 2 |
+| (1,29) | Dart + Florina | safe while the tent stands |
+| (1,28) | Pent, unencumbered | healing hub next to Hector, Marcus, Eliwood and Dart |
+| (0,27) | Louise, unencumbered | only northern bows reach her |
+| (2,29) | Matthew + Nino | reachable only through the tent side; losing him costs a unit, not a lord |
+| (2,28) | Marcus | outer wall |
+| (1,27) | Hector, unencumbered | outer wall |
+| (0,26) | Hawkeye, unencumbered | outer wall |
+| (3,29) | Merlinus's tent | 4th wall, with 2 open sides |
+
+  Give Hawkeye and Marcus their own Elixir stacks, since Pent cannot reach (0,26). Walls NEVER move; they attack only what is adjacent. Survive to about T35 (reinforcements stop), then march.
+
+**s41 attempt 7 result: GAME OVER on enemy phase 36 (Eliwood killed on the outer tile (1,27)). Before that: Dart (EP12), Florina (EP14), Nino (EP16), Wil (EP17), Marcus (EP29), Matthew (EP35).**
+- **The v4 fortress held for 35 turns.** It is the right shape. The enemy count fell 50, 46, 43, 39 over T34-36, so reinforcements really do stop around T35. Reaching T36 with Lyn, Eliwood, Hector, Pent, Louise, Hawkeye and Nils alive is enough to win.
+- **The leak was the tent again.** It fell EP11. After that, nomad bows on (3,29) or (1,27) reached the carried pairs on (1,29) and (2,29) at range 2, one per phase. The fix: Pent's first job every turn is to heal the tent (stand on (2,28) or (2,29) early). Otherwise, put Hector or Hawkeye on (3,29) the moment it falls, and never leave a soft unit within range 2 of an open tile.
+- **The fatal mistake: after killing the cork nomad on (1,27), I moved Eliwood (33/33, Def 10) onto that outer tile to close the ring.** Ten enemies could attack it; he died in one phase. **A lord is NEVER a wall, not even at full HP.** Close the gap with Hector or Hawkeye instead, or leave a weak enemy as a cork. Dropping Matthew on (1,29) while a bow nomad stood at range 2 on (1,27) killed him the same way.
+- Pent's Elfire (23x2, 100% hit) one-rounds nomad troopers; Louise's bow one-rounds the cls33 fliers from inside. By T35 the walls were trading 3 kills a turn for no damage.
+
+**s41 attempt 8 result: GAME OVER on enemy phase 15 (Lyn, carrying Nils on (0,29), was killed after Marcus died on the wall). Before that: Dart and the Matthew he carried (EP12), Merlinus's tent (EP13), Nino (EP14).**
+- The opening was clean again through T11: T1 trades, T2 carry the softs, T3 Marcus kills the sage on the (5,21) fort. On T4 Hector on (3,28) blocked the tent's approach, so only one enemy could hit it, and Pent Mended it from (2,29). EP4-6 killed the hero and all four generals on counters, then T6-T10 were a full lull (the whole SW showed '.').
+- **A carrier on a reachable tile loses BOTH units.** Dart carrying Matthew on (1,28) was doubled by bows from range 2 and both died. Never carry on a tile with any range-2 exposure.
+- **The real loss: Marcus was left at 15/39 on wall (2,28) while Pent attacked instead of healing.** He died, (2,28) opened, and a bow at (1,28) reached Lyn at range 2 on the "safe" corner while she carried Nils. **RULE: every wall at or above ~30 HP before ending the turn; heal before attacking.** The lords' corner is safe only while ALL of (0,26)/(1,27)/(2,28)/(2,29) hold.
+- Tool traps this attempt: a staff use right after a free GIVE marked Pent spent without healing; Wil's Elixir item menu failed and also spent him; `take` is not offered after a `give` on the same unit. Verify with `fe7_state` after every heal or item.
+- **Plan v5 (next attempt):** walls Hawkeye (0,26), Hector (1,27), Marcus (2,28), Pent (2,29) (Pent heals Marcus and the tent and is reachable only by bows while the tent stands). Lyn (0,29) and Eliwood (0,28) each carry one soft. Nils stands uncarried on (1,29) to Play Pent for a second heal each turn, Louise unencumbered on (1,28), Dart on (0,27). Hand Hector and Hawkeye an Elixir stack each during the T6-T10 lull. Expect the two leftover softs to die.
+
+**s41 attempt 9 result: GAME OVER on enemy phase 37 (Hector, carrying Eliwood, fell at 6 HP with no healing left).** Deaths, in order: tent (EP13), Dart+Nino (EP14), Nils and Marcus (EP15), Wil (EP16), Pent and Louise (EP29), Matthew and Florina (EP30).
+- T1-T11 had no losses (same opening as attempt 8, plus an Elixir for Marcus on T2). Layout v5 held until the tent fell on EP13. Nils's Play gave Pent two heals a turn, which worked very well.
+- **The best defensive shape found: the tanks CARRY the lords in the corner.** From T30, Hawkeye carried Lyn on (0,29) and Hector carried Eliwood on (0,28). Carried lords cannot be targeted, and doubled hits on Def 17/20 are small (Hector lost about 6-10 per phase, Hawkeye 4-9). It failed only because no healer and no weapons were left by then.
+- **Resources run out around T30:** Hawkeye broke a Silver Axe, a Killer Axe and Lyn's Silver Axe (60 uses) by T34; Pent's Elfire ran low (Louise gave him her Elfire x30); every Elixir was gone by T32. The convoy (Merlinus's Supply command, next to the tent) has Fire x40, Lightning and a Killing Edge that went unused.
+- **Reinforcements seem to stop around T35.** The count went 50, 49, 48, 46, 45 on T35-37 with no refills.
+- Tool traps: `item` right after a free trade/give fails AND spends the unit; drive it by hand instead (select, A, A, Down to Item, A, Up to wrap to the last entry, A, A). The tool's `staff` after a free trade also failed. `take` is not offered after `give`.
+- **Plan v6 (attempt 10):** opening as before. From the lull (T6-T10), use layout T: (0,29) Hector carrying Lyn, (0,28) Hawkeye carrying Eliwood, (1,29) Pent (melee-sealed; heals Hector, Marcus and (2,29)), (1,28) Marcus, (2,29) Louise, (0,27) Dart, (3,29) tent. Hector's tile is then out of reach of everything. Hawkeye and Dart hold the Elixirs. Pull Fire from the convoy for Pent early. The leftover soft units have no safe tile.
+
+**s41 attempt 10 result: the best defence so far, but no way left to kill the boss.** Layout W/T held both lords safe to T41+: Eliwood sealed on (0,29) (later carried by Hawkeye), Hector carrying Lyn, Pent healing next to the carrier, Louise as the last wall. Losses: Florina, Wil (EP10), Matthew, Nino (EP11), Nils, Dart and the tent (EP12), Marcus (EP14). Reinforcements stopped about T35-36 again, and the enemy count fell 50 to 40 by T41.
+- **Mend heals ~20-40 and Pent next to a carrier can keep it at full indefinitely.** The carrier must be on a tile adjacent to Pent ((1,29) next to Pent on (2,29) worked). Enemies standing on the ring tiles with lances (cavaliers, generals) are good corks; kill the bow nomads.
+- **WHY IT STILL FAILS: by T35 every boss-capable weapon was gone.** Hawkeye countered all game and broke his Killer Axe, both Silver Axes and Hector's spare Silver Axe; Pent used up Elfire and Fire; Louise's Silver Bow broke. Vs the boss (Def 21, Res 25, 68 HP, attacked from (24,4) ONLY), the leftovers do 0-7 per hit: impossible.
+- **RULE for attempt 11: STORE the boss kit on a sealed or carried unit from T6 and never counter with it.** Lyn is carried all game, so give her Hawkeye's Killer Axe and the two Silver Axes. Eliwood (sealed) holds Marcus's spare Silver Lance and the Silver Sword. Hawkeye counters with Dart's/Hector's iron axes only. Pull the Killing Edge from the convoy before the tent falls (~EP12). Boss math: Hawkeye Silver Axe 37-21=16 (Killer Axe crit x3 = 36), Hector Silver Axe 11, Marcus Silver Lance 12; one melee slot per turn plus range-2 chip, over about 3-4 turns with Pent healing the attacker after each Fimbulvetr counter (~25).
+
+- Attempt 10 was ended deliberately on T41: Hector dropped Lyn beside the enemies. It was unwinnable because no weapon could hurt the boss, and a game over is the only route to Restart Chapter.
+**s41 attempt 11 result: the boss kit survived and the SW was cleared by T48, then the march broke it.** Lyn was carried by Hector all game holding the Killer Axe x20 and Silver Axe x20 (it worked: neither was touched until T49). Losses: Florina, Nino (EP10), Matthew (EP11), Dart, Wil (EP12), Nils and the tent (EP13), Marcus (EP27, his Elixirs ran out). After Marcus fell, a 2x2 corner block held to T48: Hawkeye carrying Eliwood (0,28), Hector carrying Lyn (1,28), Pent on (0,29) (enclosed; heals (0,28) and (1,29)) and Louise on (1,29). Pent's Elfire picked off one ring enemy a turn.
+- **Reinforcements did NOT stop at T35 this time**: the count stayed near 50 until about T36, fell to 27 by T49, then 4 new nomads spawned at (20-23,27) on T59-60.
+- **Hector (Def 23-24) takes 0 from nomads, archers, cavaliers and wyverns.** Baiting the 8-wyvern nest (14-16,15-18) with Hector alone on (13,23) worked: 2-3 wyverns came each phase and died to his counters.
+- **THE FATAL MISTAKE: the support units parked at (10-12,26), 3-4 tiles from the bait, "safe" on fe7_threat. A wounded Killer Lance wyvern (12 HP) skipped Hector and flew to them, killing Pent and Louise in one phase (crit).** fe7_threat is computed before the bait shifts. Park supports 12+ tiles from any live wyvern, or keep Pent adjacent to Hector.
+- **Tool trap: fe7_forecast on a CARRYING unit with no target in range pressed the first menu entry (Drop)**: Hawkeye dropped Eliwood onto (13,21) and both were spent. Never forecast with a carrier unless the target is surely in range.
+- A carrier CAN trade with its own passenger (Hector traded Lyn's axes on T49/T56).
+- Ended deliberately on T61: with no healer left, two units could not out-damage the gate boss, so Eliwood walked into the nomads to force the game over.
+
+**s41 attempt 12: WON on turn 83** (Eliwood seized; survivors Eliwood, Hector, Lyn, Hawkeye, Pent, Louise). Deaths: Nino and the tent (EP4), Matthew, Wil (EP10), Florina (EP11), Dart (EP12), Marcus (EP15), Nils (EP58).
+- T4: Nino took the convoy's Killing Edge and Fire x40 (via Merch) but died that phase with them. Don't store loot on a soft unit next to the tent.
+- Final shape from T22: Hawkeye carrying Eliwood (0,27), Hector carrying Lyn (1,28), Louise (0,29), with Pent fully enclosed on (0,28), where he can heal all three. Weak corks on (1,27)/(1,29)/(2,28) kept fresh attackers off the ring. Reinforcements thinned from about T36; the corner was clear by T49.
+- Ending a turn right after an unverified heal cost a heal twice. Call fe7_end_turn ONLY after the staff result reads "HP a -> b".
+- The 8-wyvern nest died to Hector baiting from (13,23)/(14,23) while Louise shot finishers from (12,24), a tile the nest can't reach (T52-56). Hector alone at (12,24) seals the south pocket against ground units.
+- SE nomad reinforcements (4) arrived ~T55, and 8 riders and knights spawned around (23-25,7-11) at T73. Hector on the bridge (24,12) with Pent Mending from (24,13) killed them on counters (rivers flank the bridge).
+- **Boss: Fimbulvetr weighs him down to AS 9, so Hawkeye with the Killer Axe DOUBLES (9x2, 91% hit, 59% crit) and takes 24 per counter.** 68 -> 50 (player phase) -> 20 (enemy-phase counter) -> dead the next turn after a Mend. Gate regen was negligible. All 5 Bolting missed or were wasted on Hector.
+- The druid (cls1E, Purge 3-10) roams in from the west; tiles at x>=23 near the gate stay out of its range.
 
 ### Chapter 32x — The Value of Life (gaiden)
 
@@ -992,7 +1101,7 @@ _(none yet)_
 
 **Objectives:**
 
-_(filled in by the agent)_
+Part 1 "Defeat Nergal" (Nergal ch44 cls45, 75 HP, Def 28, Res 30, at (8,2), Ereshkigal 1-2). Map 17x27; the army starts at (6-9,18-21) with NO prep screen. Part 2 (per the 2026-10-18 playthrough): "Kill dragon" (Fire Dragon, 120 HP, (12,5)).
 
 **Recruits:**
 
@@ -1000,4 +1109,89 @@ None.
 
 **Agent notes:**
 
-_(none yet)_
+**s42 attempt 1: GAME OVER on enemy phase 6 (Athos fell at the pocket entrance, then Hector).** Army: Eliwood, Hector, Lyn, Athos, Pent, Hawkeye, Louise. **No staff and only one Elixir (Louise), so every HP lost is permanent until part 2.** There is no prep screen; Athos starts holding Forblaze 3C, Aureola 86, Durandal 84, Armads 85 and Sol Katti 8C, and **Hector starts with NO weapon**. Trade them on T1 (partners may be spent).
+- T1: the SE group (Uhai cls30, Rienfleche Mt 20 range 2, **Spd 25, doubles everyone**, 42 atk, plus 2 snipers) comes out on EP1 to (10,21)/(10,23)/(11,24) without attacking. T2: they have bows only, so melee them. Hector (10,20), Hawkeye (9,21) and a third unit on (10,22) **cork Uhai: he cannot move and cannot shoot adjacent units**. Pent killed a sniper (21x2), Athos (35) and Louise finished the other.
+- The NW Bolting sage (E#5, Bolting x5 at 3-10, Physic) leaves its room on EP2 and Boltings a LORD every turn: Eliwood (Res 5) took 28 and Lyn 25. **Carry both lords from the end of T1/T2 until that sage is dead.**
+- Weapon pick is broken again: Eliwood's `weapon_slot` for Durandal was refused ("single entry 0x01"), so he swung the Iron Sword for 2. Put Durandal in slot 0 (trade the other swords away) or skip him.
+- The W room (Linus cls13 Basilikos 51 atk + warrior) opens T3; the E room generals T4; the SW room (**Excalibur sage, 42 magic atk, AS 22, doubles Hector (60 dmg) and Hawkeye (58)**, plus a Runesword Valkyrie) T5; NE Lloyd/hero T6. By EP6 they all converged on the SE pocket.
+- The SE pocket (12-14,21-22)+(12,23)+(12,24) seals with one unit on (12,24). (13-14,21-22) are unreachable by anything except Bolting. But the (12,24) holder can be hit by 3 enemies; Athos (40 HP) died there to Linus/general/Excalibur. Turtling with no heals does not work; kill the waves as they arrive.
+- `fe7_act item` right after a trade failed and spent the unit (Elixir not drunk), as warned.
+
+**s42 attempt 2: GAME OVER on enemy phase 6 (Athos fell, then Lyn).** This time there WAS a Prep screen (restart): Pick Units shows only these 7. Trade, then List: no staves anywhere, and the convoy is empty. Prep trades done: Durandal into Eliwood's slot 0, Armads to Hector, Sol Katti into Lyn's slot 0, and Athos given Nosferatu + Elixir (from Louise).
+- **T1 carry both lords** (Hector carries Eliwood from (8,18), Athos carries Lyn). T2 then copies attempt 1 but better: Pent attacks sniper A from (10,22) at range 1 (no counter, 19x2), Louise finishes it from (8,23), Hector (10,20) and Hawkeye (9,21) hit the corked Uhai (Hawkeye's Killer Axe crit killed him), and Athos takes sniper B to 10 from (10,24). The whole SE group was dead by EP2, with no damage taken.
+- The sage sat at (5,16)/(5,17) on T3-T4, out of everyone's reach, then came to (10,18) on T5 with Linus (10,20), the warrior (10,19) and the generals (12-13,19).
+- EP5: everyone in the pocket's 4 inner tiles plus Pent on (12,22) took only the warrior's bow and Bolting. **The inner tile (13,21) is hit at range 2 from (13,19) over the wall** (north side).
+- T6: **Linus stood in the pocket mouth (12,24)**: one melee tile (12,23) and one range-2 tile (12,22) on him, so he can't be killed in a turn. Athos gave Lyn to Pent and stood on (12,22) to drain Linus, **but `weapon_slot` for Nosferatu failed and left Athos SPENT at 22 HP**, and Linus killed him. **Put the weapon you need in slot 0 at Prep; never rely on `weapon_slot`.**
+- The pocket is a trap once Linus reaches (12,24). Kill the sage early and fight the waves before they converge.
+
+**s42 attempt 3: GAME OVER on enemy phase 6 (Pent and Louise died holding seal tiles, then Hector at 14 HP).** T1-T6 went very well; copy them:
+- **Prep: Athos [Nosferatu, Aureola, Elixir, Forblaze]** (Nosferatu in slot 0, so plain attacks heal him); Eliwood Durandal and Lyn Sol Katti in slot 0; Hector Armads.
+- T1: Hector carries Eliwood from (8,18); Pent steps to (7,19); Hawkeye carries Lyn from (8,20). T2: Pent kills sniper A from (10,22) at range 1; Athos hits sniper B from (10,24) at range 1 (Nosferatu 30); Louise finishes B from (9,24); Hector (10,20) and Hawkeye (9,21) hit and cork Uhai. T3: Pent finishes Uhai at range 1. Uhai's Rienfleche (Mt 20 bow) went to Louise; **Louise also has a support with Hawkeye**.
+- The sage Boltings HECTOR on EP2/EP3/EP4 (20 each). The Elixir was given to Hector on T3 and **had to be drunk by hand** (the tool's `item` failed twice).
+- **T4: Athos at (7,17) kills the sage at (5,17) with Nosferatu 22x2. It can't counter: its equipped Bolting is range 3-10.** T5: Athos kills the warrior (Res 6, 34 dmg). EP5: Linus attacked Athos and died to Nosferatu counters. T6: Athos kills general E#10 (27x2) from (8,21). Athos stayed at 40/40 throughout: **Nosferatu Athos is the engine of this chapter.**
+- The loss: the rest of the army sat in the SE while Athos fought in the north. On EP5 the Rex general reached Hector at (10,23), a tile `fe7_threat` called safe, and took him to 14. On EP6 the Excalibur sage, the Valkyrie and the Rex general killed both seal units in one phase, and then Hector.
+- **Next time: keep the whole team with Athos.** Excalibur (48 HP, Def 16) dies in one turn to Athos 15 + Louise's Rienfleche 18 + Hawkeye's Killer Axe 16, with Hawkeye last so he never eats the counter. Don't leave Hector at low HP. The **E room (13-15,15-17) empties on EP4; its door is (13,18), and its inner tiles (14-15,15-17) are unreachable even at range 2** once the door is held.
+
+**s42 attempt 4: GAME OVER on enemy phase 9 (Athos fell at the pocket throat, then Lyn).** Deaths: Pent and Louise (EP3), Hawkeye (EP6).
+- **PREP WAS SKIPPED by queued Start presses ("START: Fight!").** After Restart Chapter, press Start ONE at a time with a screenshot each, and stop at the Preparations menu. On-map fallback: Item > weapon > Equip by hand puts any weapon in slot 0 (free action).
+- On EP3, Uhai (12 HP, corked) shot Pent dead from 2 tiles away (Pent stood on (10,23), two from (10,21)); Louise died the same phase. **A corked Uhai still shoots anyone exactly 2 tiles away.**
+- **Excalibur sage: its AS is 16, not 22.** It does NOT double Athos (13), Hawkeye uncarried (29) or Hector uncarried (30), but doubles any carrier. Hawkeye carrying took 29x2 = 58 vs 57 HP.
+- With 3 units left, a placement where Excalibur's best kill was Hawkeye (deep at (13,22)) instead of Hector worked: it killed Hawkeye, Lyn dropped on his tile out of the Valkyrie's reach, then Athos (Nosferatu 16) + Hector (Armads 23, 95%) killed Excalibur.
+- **Athos vs each enemy with Nosferatu counters:** net-positive vs Excalibur, Valkyrie, generals and the warrior; net-negative vs **Lloyd (Regal Blade 21x2, doubles, crit ~13%)** and the **hero (Tomahawk 17x2 at range 2, Brave Sword in melee)**. Nosferatu ran from 20 to 4 uses by T9. Lloyd's Res is effectively 25 (Nosferatu does 15).
+- The Rex general standing on (11,24) is the only access to (12,24), so it corks the pocket. But enemies pass through each other, so Lloyd still reached (12,24).
+
+**s42 attempt 5: GAME OVER on enemy phase 13 (Hector, 39 HP, holding (12,24), killed by Lloyd from (11,24) — a crit).** Deaths before that: Hawkeye (EP10, sacrificial cork at (11,24)), Pent (EP11, same cork), Louise (EP11, cause unclear: she was on (14,22), which the threat tool called safe).
+- The prep and the T1-T9 recipe worked: the SE group was dead by T2, the sage by T4 (Athos at (7,17)), Linus by EP5 on Nosferatu counters, general E#10 T6, Excalibur and the Valkyrie T7, and the Rex general EP8 on Athos's counter. **By T9 only Lloyd, the hero and the two NW druids were left in part 1.**
+- **The endgame against Lloyd plus the hero is the problem.** Lloyd: Regal Blade, 100% hit and 24% crit on Hector, 13x2 (a crit does 39); Hector's Armads hits him only 52%. Eliwood with Durandal takes 31x2 from him. The hero is weak on Hector (Brave 5x4, Tomahawk 8) but deadly on Athos (17x2).
+- The pocket does not help here. (12,24) has exactly one melee neighbour, (11,24), and Lloyd always gets it. The tiles at range 2 of the mouth are all outside, so Athos can only attack from (12,24) itself, and he dies there. **Lloyd's AI moves before the hero's.**
+- **Next time: kill Lloyd and the hero in the OPEN while the army is still whole** (T7-T9, when Pent, Louise and Hawkeye were alive). Lloyd: Aureola 20 at 96% from range 2 (he can't counter at range), Louise's Rienfleche, and Pent. Hero (60 HP, Res 19): Aureola ~23, Nosferatu ~18, at range 2 only when his Tomahawk is used up or he holds the Brave Sword. Don't let the pocket become a 1v2 against Lloyd's crits.
+
+**s42 attempt 6: GAME OVER on enemy phase 4 (Lyn).** Deaths: Pent and Louise (EP1), Hawkeye (EP2).
+- **Exact T1 that works (attempts 3 and 5): Pent (8,20)->(7,19) Wait; Hector (7,20)->(8,18) rescues Eliwood; LOUISE (8,21)->(7,21) Wait; Hawkeye (6,21)->(8,20) rescues Lyn; Athos stays at (9,19).** In attempt 6 I forgot to move Louise. On EP1 Uhai then came to (8,23) and attacked instead of stopping at (10,21)-ish, and Pent and Louise both died. After that the run fell apart.
+- **Attempt-5 T2, for reference:** Pent from (10,22) on sniper E#13 (44->4); Athos from (10,24) on sniper E#16 (44->13); Louise finishes E#16 from (9,24); Hector from (10,20) on Uhai (crit kill); Hawkeye finishes E#13 from (9,23).
+- **`fe7_wait` can eat a whole player phase.** After EP3 it reported "still enemy phase (turn 4)", but its A/Start presses had ended player phase 4 with nobody moving. A transient "FALLEN" read (Lyn reported dead, actually 9 HP) came just before. When `fe7_end_turn` or `fe7_wait` reports a death you don't expect, check `fe7_state` before waiting again.
+- Lyn (Res 9, 29 HP) on a "sage-only" tile still took Elfire for 20 at range 1-2 from the sage, who walked up next to her. Linus then came out of the W room to (8,19).
+
+**s42 attempt 7: GAME OVER on enemy phase 14 (Hector, 13 HP, at the mouth; his 90% Armads counter missed the 9-HP hero).** Lloyd was killed (T12). Deaths: Hawkeye EP10 (Lloyd), Louise and Pent EP11. **The best attempt so far; T1-T9 is a reliable recipe:**
+- T1 exactly as above (Louise to (7,21)!). EP1: Uhai stops at (10,21), the snipers at (10,23) and (11,24), and nobody attacks.
+- T2: Pent from (10,22) on sniper E#13 (20x2 -> 1); Athos from (10,24) on sniper E#16 (-> 13); Louise from (9,24) kills E#16; Hector from (10,20) hits Uhai (-> 34); **Hawkeye from (9,21) completes the cork** (Uhai's only free neighbour; (11,21) is a wall). EP2: E#13 died on Pent's counter; the sage Bolted Hector for 22.
+- T3: Pent hits Uhai at range 1 (12, -> 8); Athos moves to (9,20), trades the Elixir to Hector (`trade` with `item_slot`), then kills Uhai at range 2. Hector drinks the Elixir by hand. Louise (12 HP) hides at (13,22).
+- T4: Athos kills the sage at (6,19) from (8,19) (21x2; it can't counter, Bolting equipped). The carriers go to (11,24) and (12,24): **Linus (Basilikos 51 atk) doubles any carrier for a kill.**
+- T5: Athos drains Linus from (7,17) (range 2, no counter; out of the generals' reach). EP5: Linus and the warrior both die on Nosferatu counters.
+- T6: drop the lords into the pocket ("a dropped unit cannot act until next turn"). T6-T7: Athos baits the generals near (7,17); both die on his counters. **Park Athos at (5,18) on T7**, where only the general reaches. Lloyd and the hero arrive around (9,14)-(5,16).
+- T8: the Excalibur sage stood in the pocket mouth; Hawkeye (Killer Axe, 59% crit) killed it from (12,24). **Excalibur (Mt 18, 1-2) is Athos's best weapon:** 23 vs Lloyd (effective Res 25), 29 vs the hero, 32 vs the Valkyrie. Equipped, it gives Athos AS 16, so the hero does NOT double him (with Nosferatu, AS 15, it does). But it doesn't heal.
+- **Armads gives Hector +5 Def when equipped** (Def 30). The hero then does Brave 4x4 or Tomahawk 7x2 to him; with the Iron Sword it is 11x2. Lyn's sword rank is A, and the Regal Blade needs S.
+- Pent died on (14,22) on EP11 with no visible attacker. (Louise died there in attempt 5 too.) **Don't trust (14,22) while the Valkyrie (E#15, cls3E) lives.**
+- The loss: Hector carried Eliwood all game and was chipped by Bolting (EP2), the Valkyrie (EP7) and the Tomahawk (EP13), down to 13. A lord at low HP can't be the cork. **Keep Hector topped up (Elixir), and let Athos with Excalibur (no counter at range 2) take Lloyd in three hits from range.**
+- **PART 2 WARNING (from the 2026-10-18 win):** only Aureola hurts the dragon (20/hit, 6 hits), and its breath counters for a flat 37. That run healed Athos between hits with Mend/Heal. **This run has no staves.** Plan for part 2 before spending the Elixir in part 1.
+
+**s42 attempt 8: GAME OVER on enemy phase 18 (Lyn, killed by a BERSERKED Hector). Part 1 got as far as the gate opening on EP14 and all 3 spawn generals dead by T16.** Deaths: Hawkeye (EP8), Pent and Louise (EP9; Louise on (14,22) again).
+- T1-T4 as attempt 7, but the sage's Bolting missed twice, so the Elixir was saved. EP4: Linus died on Athos's counter (crit). T5: Athos used Forblaze on the warrior from (6,17). T6: Darin (Rex Hasta) died to a Nosferatu crit from (7,17); the other general died on EP6 counters.
+- **Forblaze (Mt 14, light) gives Athos AS 18 and avoid 66.** It doubles druids and generals and has a 22% crit. Ursula, the Excalibur Valkyrie, died to a Forblaze crit on T8, cast from **(10,25), a tile neither Lloyd nor the hero could reach.**
+- **Lloyd and the hero died to Athos holding the pocket mouth.** T9: Athos on (12,24) with Nosferatu. Lloyd has 0% crit on Athos, and from that tile the hero couldn't reach him. T10: Athos on (12,23) drained Lloyd, and a 2% crit killed him. EP10: the hero died on Nosferatu counters.
+- **After the gate opens (3 enemies left), the druid E#2 (it starts at (9,3) beside Nergal) carries a BERSERK staff (item 0x52, 3 uses) and Eclipse.** It Berserked Lyn (status byte +0x30 = 0x34), then Hector, who was carrying Athos. A berserked unit can't be rescued, traded with or controlled, and acts on its own during the enemy phase. Berserked Hector killed Lyn.
+- **Next time: kill E#2 before it reaches staff range, or keep every lord out of it.** Its reach is about move 6 plus Mag/2 = 13 tiles. In attempt 8 it came south to (7,6) on EP15 and (7,9) on EP16. Forblaze does 25x2 to it (Res 19), enough to kill it in one round.
+- The NW druid room: Athos (Forblaze) baited both druids at (5,17) and killed both on counters in one enemy phase (taking 30 damage). The 3 gate generals do 0 to Hector with Armads; he killed 2 on counters.
+- The tool hazards seen again: `fe7_end_turn` suspended the game to the title once (Resume Chapter restores it), and the tool's inventory-full discard sometimes doesn't take (do it by hand: A, Left, A).
+
+
+**s42 attempt 9: GAME OVER on enemy phase 8 (Lyn, on (13,21) inside the SE pocket).** Deaths: Pent (EP6, on (3,17), a tile `fe7_threat` called safe), Louise (EP6, on the (12,23) cork).
+- T1-T3 as before; Uhai suicided on Athos (EP3). T4: the sage died to Forblaze 23x2, but **EP4 Linus + the warrior took Athos 40->9** (the warrior died, Linus at 38). T5: Pent crit Linus from range 2, Athos finished him. T6: **Athos drained general E#10 (Res 11) with Nosferatu 29x2 from (9,17): 9 -> 40 HP in one action.** Low-Res generals are Athos's heal battery.
+- **The SE pocket is (12,21)-(14,22) plus the corridor (12,23)-(12,24); its ONLY door is (11,24)->(12,24)** ((11,23) is a Brace pillar, row 20 is wall, (13,23)/(13,24) wall).
+- **(12,21), (13,21) and (14,21) are only 2-3 tiles from row 19 ((12,19)/(13,19) are floor, through the wall).** The hero's Tomahawk (1-2) or anything ranged on (13,19) hits (13,21). **The only truly safe interior tiles are (13,22), (14,22) and maybe (14,21).**
+- Measured: E#15 (cls3E, Runesword) is WEAK: 9-10 to Hector/Hawkeye, 1 blow, 0 crit. The Excalibur sage E#12 has AS 16 and does NOT double: 29 to Hawkeye, 30 to Hector, 14 to Athos. **Lloyd E#6 (cls10, item 0x90, Spd 27) does 22x2 = 44 to Athos (40 HP) — a one-round kill. Never leave Athos in Lloyd's reach.**
+- The Elixir and the inventory-full discard both need hand input (Item -> row -> Use; discard: highlight item, A, Left, A).
+
+**s42 attempt 10: ended deliberately on T4 (Athos died on EP3; part 2 is unwinnable without his Aureola).**
+- **Restart Chapter -> repeated Start presses skipped the Preparations screen** (Start on Prep = Fight). The army started untraded: Durandal, Armads and Sol Katti on Athos, the Elixir and Nosferatu on Louise, Hector UNARMED. After Restart, press Start ONE at a time and screenshot until the Prep menu appears.
+- On-map fixes that worked on T1: Eliwood/Lyn `trade` with Athos to TAKE their weapons (take-only works; the tool's SWAP failed twice with "nothing changed hands"). On T2 Louise gave Athos the Elixir; on T3 Athos gave it to Hector and Hector took Armads (two separate units' trades).
+- T2 Forblaze one-rounds a sniper (34x2). **EP3: Uhai (43 HP) killed Athos (40) at (9,20) with a Rienfleche double (22x2) at range 2.** In attempts 7-9 Athos stood there only after Uhai was weakened (<=29) or died. Never park Athos within Uhai's reach while Uhai has >38 HP.
+
+**s42 attempt 11: GAME OVER on enemy phase 10 (Lyn, on (13,21), killed by the hero's Tomahawk).** Deaths: Pent (EP7, (12,21), hero's Tomahawk from (12,19)), Louise (EP7, (13,22), attacker not seen). Best part-1 progress so far: by T10 sage, Linus, warrior, both generals, Uhai, both snipers, Ursula AND Lloyd were dead with Athos at 40/40.
+- Prep: press Start ONE at a time after Restart; wait on the black fade and the Prep menu appears. The prep trade UI drops the first D-pad press after opening a trade (check the highlight before A).
+- **NOSFERATU EQUIPPED IS THE KEY.** T4: Athos killed the Bolting sage with Nosferatu 20x2 from (7,17) (it can't counter); EP4 Linus died on his drain counters and Athos stayed 40/40. T5: Nosferatu one-shots the warrior (Res 7, 33 dmg). T6: Nosferatu doubles general E#10 (28x2) from (10,19). EP7: Darin died on his counter. Keep Nosferatu in slot 0 all of part 1 (only ~20 uses: budget them).
+- T3: Pent 12 + Hector 21 (Armads, 76%) kill Uhai if Hawkeye crits on T2; otherwise use Pent+Hector+Hawkeye. NEVER put Athos within 2 of Uhai while Uhai has >38 HP.
+- **Ursula (E#12, Excalibur, Res 25, Def 16, 48 HP) died T7: Athos Nosferatu 16 from (10,23) (100% hit), then Hector Armads 23 from (12,24) (100% hit).** Both forecasts said 100%; Hector takes no counter because his blow kills.
+- **The hero E#7 (cls0C, Tomahawk 1-2, Brave Sword) hits THROUGH WALLS at range 2:** from (10,21) onto (12,21), from (12,19)/(13,19) onto (12,21)/(13,21). From inside the pocket only (14,21) and (14,22) are out of his Tomahawk once he is near.
+- **Lloyd (E#6, cls10, Regal Blade 0x90, melee only, Spd 27, 22x2 on Athos, crit 12%)** hunts Athos. EP9 Athos (40, Nosferatu) survived his double at 16; T10 Athos drained him from range 2 and crit-killed him.
+- **The pocket failure:** on T8 I took Hector off the door to carry Eliwood deep, and E#15 (Runesword, weak, but it DRAINS on hit and doubles any carrier) walked in to (12,22). Once an enemy is inside, nothing can leave and Hector got chipped 47->7. **Never leave the door (12,24) open. Kill E#15 early with uncountered damage (Athos Forblaze 28 at range 2; E#15 counters only 3). Never melee it: each counter heals it.**

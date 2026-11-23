@@ -1,0 +1,705 @@
+# Playthrough Strategy
+
+Pre-made strategy for the agent, plus the agent's own notes added as it plays. Every chapter has
+its own section below with a **Recruits** table (pre-filled by the human) and an **Agent notes**
+area (filled in by the agent). Broad, cross-chapter lessons go under **Broad strategy notes**.
+
+## General Strategy
+
+- Always select "yes" to accept side missions when offered the choice to do so.
+
+## Recruiting Units
+
+In each chapter, there are often units that appear as green units (uncontrollable allies) or red units (enemies). These units can often be recruited by executing the Talk action with a specific player-controlled unit, but there are some more complex conditions that have to be fulfilled in order to recruit some characters. For each chapter, you have been provided a list of the recruitable units that appear and the conditions that need to be fulfilled in order to recruit the character. You should try to recruit units if possible, but it is not a strict requirement.
+
+The chapter sections below cover Lyn mode and Hector mode. Eliwood mode is not covered. Recruits are the same on normal and hard difficulty throughout the entire game, so use the list for your mode regardless of difficulty.
+
+## Promoting Units
+
+Fire Emblem has a mechanic known as promotion, where a unit advances to a stronger class. A unit must be at least level 10 to be promoted, although it can go as high as level 20 before being promoted. It is up to you to decide when it is appropriate to promote a unit.
+
+In virtually all cases, a unit is promoted by using a specific consumable item that matches its class. For example, a knight can use a knight crest to be promoted to a general.
+
+## Broad strategy notes
+
+Cross-chapter lessons the agent adds as it plays. Append below.
+
+- Preparations screen appears after the intro dialogue; pressing Start through the intro skips it. Use it: Pick Units shows the whole roster (Serra, Erk, Lyn, Kent, Florina, Wil, Matthew, Sain were benched), and Items > List lets you pull convoy items (Heal staves, crests, vulneraries) into any unit's inventory.
+- No healer means no attrition defense. Shamans' Flux does ~11 to low-res units; Marcus (3 dmg) and a promoted Oswin (Res 7) are the shaman tanks. Pressing A on an empty map tile opens the field menu, and a following Down+A opens Status, so watch the cursor.
+
+## Lyn mode
+
+### Prologue — A Girl from the Plains
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 1 — Footsteps of Fate
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 2 — Sword of Spirits
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 3 — Band of Mercenaries
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | action                                                     |
+| --------- | ---------------------------------------------------------- |
+| **wil**   | visit southwest village; otherwise he auto-joins on turn 3 |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 4 — In Occupation's Shadow
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character  | action                                                                             |
+| ---------- | ---------------------------------------------------------------------------------- |
+| **dorcas** | **lyn talks to him** while he's an enemy; alternatively finish without killing him |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 5 — Beyond the Borders
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | action                                              |
+| --------- | --------------------------------------------------- |
+| **serra** | **lyn talks to her**; otherwise joins after chapter |
+| **erk**   | joins with serra                                    |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 6 — Blood of Pride
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character   | action                                                |
+| ----------- | ----------------------------------------------------- |
+| **matthew** | visit a northern village; otherwise auto-joins turn 3 |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 7 — Siblings Abroad
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 7x — The Black Shadow (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 8 — Vortex of Strategy
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 9 — A Grim Reunion
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 10 — The Distant Plains
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+## Hector mode
+
+### Chapter 11 — Another Journey
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 12 — Birds of a Feather
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 13 — In Search of Truth
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action    | important condition  |
+| --------- | --------- | ------------------------ | -------------------- |
+| **guy**   | enemy     | **matthew** talks to him | don't kill him first |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 13x — The Peddler Merlinus (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 14 — False Friends
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character     | starts as | recruit with / action                    | important condition               |
+| ------------- | --------- | ---------------------------------------- | --------------------------------- |
+| **erk**       | green npc | **serra or priscilla** talks to him      | —                                 |
+| **priscilla** | village   | **any unit visits the southern village** | protect the village from brigands |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 15 — Talons Alight
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 16 — Noble Lady of Caelin
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 17 — Whereabouts Unknown
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character  | starts as | recruit with / action      | important condition                       |
+| ---------- | --------- | -------------------------- | ----------------------------------------- |
+| **raven**  | enemy     | **priscilla** talks to him | recruit him before he gets himself killed |
+| **lucius** | green npc | **raven** talks to him     | therefore raven must be recruited first   |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 17x — The Port of Badon (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action | important condition     |
+| --------- | --------- | --------------------- | ----------------------- |
+| **canas** | village   | **visit a village**   | must access chapter 17x |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 18 — Pirate Ship
+
+**Objectives:**
+
+Survive 11 turns (shown on map at turn 1).
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+#### s01 attempt 1 (lost, turn 8 enemy phase — a lord died)
+- Map: units start on raised stern deck. Only two ways up: a 1-wide passage + stair on the left and one on the right (railing elsewhere). Enemies: lots of Shamans (Flux, ~10-11 dmg to most units, 3 to Marcus), pirates/fighters, myrmidons/mercs, an archer. Objective also says "or defeat leader".
+- Holding the passage tile itself (just above the stair) lets 3-4 enemies hit the blocker (melee from stair + Flux from range 2). Marcus held left well for ~5 turns; Hector on the right silently dropped to 2 HP. CHECK BLOCKER HP WITH R EVERY TURN, not just hover.
+- Better: block one tile further back (the deck tile above the passage) — only 2 tiles can reach it. Keep row directly above the railing empty (shamans on lower deck reach it at range 2).
+- Never put Hector/Eliwood on the front; no healer and no vulneraries in supply (Merlinus has only 2 items).
+- Rebecca does 0 damage to Shamans; don't trade with them.
+
+
+#### s01 attempt 2 (lost, turn 8 enemy phase — Hector died)
+- Blocking one tile back (top-deck tile above each passage) still costs ~7-20 HP per side per enemy phase; with no healing the HP pool ran out by turn 6-7. Bartre (30 HP) died in ONE phase on the right; the gap then let shamans onto the deck and Oswin (hidden, 5 HP) and later Rebecca/Hector died.
+- Leaving weak melee enemies alive on the passage tile did NOT help.
+- Passive turtling loses on HP attrition. Must kill enemies every turn (attempt 1 killed steadily and was down to ~7 enemies by turn 8). Dorcas missed 81% twice; Lowen does 10 single hit vs shamans (no double).
+- Hector has Def 11 / Res 2: fine vs physical, bad vs Flux. Never leave a lord on the row above the railing after attacking.
+
+
+#### s01 attempt 3 — WON (survived 11 turns; ended after turn-11 enemy phase)
+- Key fix: use the Preparations screen (it appears after the intro; don't skip it with Start). Deployed Serra (took both Heal staves from the convoy via Items > List > staff tab) and Erk instead of Rebecca/Bartre; gave Oswin the Knight Crest (now General: Def 16, Res 7) and a Vulnerary.
+- Formation: Marcus holds the left passage tile, Oswin the right one (both standing ON the passage tile at the top of the stairs). Every turn: blocker attacks the enemy below, then Serra steps directly behind and heals. Lords, Erk, Lowen stay in the bow (rows 0-2, away from the tiles 2 squares from the passages).
+- Dorcas died on turn 9's enemy phase plugging the right while Oswin healed (2 shamans + others). A late enemy pegasus appears over the water on turn 11; it could only reach Marcus.
+- Handover: Oswin ~27/34 (Iron lance nearly broken, ~9 uses), Marcus ~28/34, Erk 12/21, Serra 19/22, others full. Got a Longsword and a Flux from kills. Save prompt after the chapter: saved to the slot in use (top).
+- Mistake: Start-skipping the ending also skipped Ch19's Preparations screen and answered "Deploy Merlinus?" with the default Yes, so Ch19 started on turn 1 with the default deployment.
+
+### Chapter 19 — The Dread Isle
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action    | important condition |
+| --------- | --------- | ------------------------ | ------------------- |
+| **fiora** | green npc | **florina** talks to her | appears turn 3      |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 19x — Imprisoner of Magic (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 19xx — A Glimpse in Time (gaiden, Hector mode only)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 20 — Dragon's Gate
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character   | starts as | recruit with / action          | important condition                     |
+| ----------- | --------- | ------------------------------ | --------------------------------------- |
+| **legault** | enemy     | **hector or lyn** talks to him | appears turn 2; he may eventually leave |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 21 — New Resolve
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 22 — Kinship's Bond
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action               | important condition |
+| --------- | --------- | ----------------------------------- | ------------------- |
+| **heath** | enemy     | **eliwood, hector, lyn, or ninian** | —                   |
+| **rath**  | green npc | **lyn**                             | —                   |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 23 — Living Legend
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character   | starts as | recruit with / action | important condition |
+| ----------- | --------- | --------------------- | ------------------- |
+| **hawkeye** | green npc | **hector**            | appears turn 2      |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 23x — Genesis (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 24 — Four-Fanged Offense (24a Linus version / 24b Lloyd version)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character   | starts as | recruit with / action                | important condition                        |
+| ----------- | --------- | ------------------------------------ | ------------------------------------------ |
+| **geitz**   | enemy     | **dart**                             | only on the linus version of the map (24a) |
+| **wallace** | green npc | **lyn, kent, sain, florina, or wil** | only on the lloyd version (24b)            |
+
+Depending on various circumstances, you will only see one of the two on the map. You cannot get both.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 25 — Crazed Beast
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character  | starts as | recruit with / action | important condition             |
+| ---------- | --------- | --------------------- | ------------------------------- |
+| **farina** | green npc | **hector**            | appears turn 5; **pay 20,000g** |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 26 — Unfulfilled Heart
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+Vaida appears here as an enemy. Do **not** kill her; she must survive this chapter to be recruitable in Chapter 29.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 27 — Pale Flower of Darkness
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character  | starts as | recruit with / action                                 | important condition                                           |
+| ---------- | --------- | ----------------------------------------------------- | ------------------------------------------------------------- |
+| **karel**  | green npc | **hector or lyn**                                     | mutually exclusive with harken; see the note below this table |
+| **harken** | enemy     | **eliwood, marcus, lowen, hector, oswin, or isadora** | mutually exclusive with karel; see the note below this table  |
+
+Depending on various circumstances, you will only see one of the two on the map. You cannot get both.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 28 — Battle before Dawn
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character  | starts as | recruit with / action     | important condition                                              |
+| ---------- | --------- | ------------------------- | ---------------------------------------------------------------- |
+| **nino**   | green npc | **hector or lyn**         | keep her alive afterward                                         |
+| **jaffar** | green npc | **nino must talk to him** | both must survive ch. 28; jaffar then joins automatically in 28x |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 28x — Night of Farewells (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 29 — Cog of Destiny
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action | important condition                          |
+| --------- | --------- | --------------------- | -------------------------------------------- |
+| **vaida** | enemy     | **hector**            | she must have survived as an enemy in ch. 26 |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 30 — The Berserker
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 31 — Sands of Time
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 31x — Battle Preparations (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character | starts as | recruit with / action | important condition                                                                                              |
+| --------- | --------- | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **karla** | npc       | **bartre**            | bartre must be a **level 5+ warrior**, be deployed, talk to her, and both must survive their forced combat round |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 32 — Victory or Death
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+| character   | starts as | recruit with / action            | important condition            |
+| ----------- | --------- | -------------------------------- | ------------------------------ |
+| **renault** | ruins     | **visit the northwestern ruins** | must do so **within 11 turns** |
+
+**Agent notes:**
+
+_(none yet)_
+
+### Chapter 32x — The Value of Life (gaiden)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
+
+### Final Chapter — Light (two parts)
+
+**Objectives:**
+
+_(filled in by the agent)_
+
+**Recruits:**
+
+None.
+
+**Agent notes:**
+
+_(none yet)_
