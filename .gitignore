@@ -70,3 +70,6 @@ archive/action_test_states/*.ss
 overlay/.replay*/
 overlay/public/portraits/*.png
 overlay/chapter-override.txt
+
+# Playthrough screenshots (tens of thousands per run, not needed in the repo)
+playthroughs/*/screenshots/
